@@ -1,37 +1,33 @@
 # CrewChief Assistant
 
-Voice-controlled virtual gamepad for sim racing. Speak commands, get button presses.
-
-## What It Does
-
-1. Hold PTT key → speak a command
-2. OpenAI Whisper transcribes your speech
-3. GPT-4o-mini maps it to a command
-4. Virtual Xbox 360 controller button is pressed
+Voice-controlled virtual gamepad for sim racing. Hold a push-to-talk key, speak a command, and the app presses the corresponding virtual Xbox 360 controller button. Uses OpenAI Whisper for speech-to-text and GPT for intent mapping.
 
 Works with any game that supports gamepad input.
 
 ## Requirements
 
 - Python 3.13+
+- [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases) driver
 - OpenAI API key
-- ViGEmBus driver (for virtual controller)
 
-## Installation
+## ViGEmBus Driver
+
+This app creates virtual Xbox 360 controllers to send button presses to your game. ViGEmBus is the driver that makes this possible — without it, the app can't create virtual gamepads.
+
+1. Go to the [ViGEmBus releases page](https://github.com/nefarius/ViGEmBus/releases)
+2. Download the latest `ViGEmBus_Setup_x.x.x.exe`
+3. Run the installer and restart your PC if prompted
+
+You only need to do this once.
+
+## Setup
 
 ```bash
 pip install poetry
 poetry install
 ```
 
-## API Key Setup
-
-Option 1: Copy `.env.example` to `.env` and fill in your key:
-```bash
-cp .env.example .env
-```
-
-Option 2: Set in the app via Settings > Configure
+Set your API key by copying `.env.example` to `.env`, or configure it in the app.
 
 ## Usage
 
@@ -39,78 +35,20 @@ Option 2: Set in the app via Settings > Configure
 python main.py
 ```
 
-### Settings
+You can bind up to 3 virtual controllers with 14 buttons each. Commands are natural language — the AI matches intent, not exact wording. Right-click any button in the GUI to rename its command.
 
-| Setting | Description |
-|---------|-------------|
-| OpenAI API Key | Required for speech recognition and intent mapping |
-| Input Device | Microphone to use for recording |
-| Push to Talk Key | Key to hold while speaking |
-| Audio Feedback | Play sound when PTT is pressed/released |
-| Min. Confidence | Minimum confidence % to trigger a command |
-
-### Virtual Controllers
-
-- Up to 3 virtual Xbox 360 controllers
-- Each controller has 14 bindable buttons
-- Click **+** to add, **✕** to remove
-- Right-click any button to rename the command
-
-### Commands
-
-Commands are natural language. Examples:
-- "fuel status" → press A
-- "check my tires" → maps to "tire status"
-- "box this lap" → maps to "pit request"
-
-The AI understands intent, not exact words.
-
-## Build Executable
+## Build
 
 ```bash
-pip install pyinstaller
-pyinstaller CrewChiefAssistant.spec --clean
-```
-
-Or with Poetry (pyinstaller is a dev dependency):
-```bash
-poetry install --with dev
 poetry run pyinstaller CrewChiefAssistant.spec --clean
 ```
-
-Or double-click `build.bat`.
 
 Output: `dist/CrewChiefAssistant.exe`
 
 ## Config
 
-On first run, `config.default.json` is copied to `config.json` (which is gitignored).
-All user settings and bindings are stored in `config.json`:
-- `settings` - app configuration
-- `controllers` - virtual controller bindings
-- `available_buttons` - A, B, X, Y, D-pad, shoulders, thumbs, back, start
+On first run, `config.default.json` is copied to `config.json` (gitignored). All settings and bindings are saved there.
 
-## Project Structure
+## Disclaimer
 
-```
-├── main.py              # Entry point
-├── src/                 # Application source
-│   ├── audio.py         # Recording
-│   ├── stt.py           # Speech-to-text
-│   ├── router.py        # Intent mapping
-│   ├── gamepad.py       # Virtual controller
-│   ├── config_manager.py# Config handling
-│   ├── sounds.py        # Audio feedback
-│   └── ui/              # GUI components
-│       ├── app.py
-│       ├── widgets.py
-│       ├── modals.py
-│       └── engine.py
-├── resources/           # Sound files
-├── config.default.json  # Default settings (template)
-├── config.json          # User settings (gitignored)
-├── .env.example         # Environment variable template
-├── build.bat            # Build script
-├── LICENSE              # MIT License
-└── CrewChiefAssistant.spec
-```
+This is a personal project. Use at your own risk.
