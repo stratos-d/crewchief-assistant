@@ -1,0 +1,28 @@
+[project]
+name = "crewchief-assistant"
+version = "0.1.0"
+description = "A voice-controlled virtual gamepad assistant for sim racing. Uses OpenAI Whisper and GPT to transcribe speech and map natural language commands to virtual Xbox 360 controller inputs via ViGEmBus."
+authors = [
+    {name = "Julius"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+    "openai (>=2.31.0,<3.0.0)",
+    "sounddevice (>=0.5.5,<0.6.0)",
+    "scipy (>=1.17.1,<2.0.0)",
+    "keyboard (>=0.13.5,<0.14.0)",
+    "vgamepad (>=0.1.0,<0.2.0)",
+    "python-dotenv (>=1.2.2,<2.0.0)",
+    "pygame (>=2.6.0,<3.0.0)"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller (>=6.19.0,<7.0.0)"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

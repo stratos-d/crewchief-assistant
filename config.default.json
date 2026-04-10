@@ -1,0 +1,53 @@
+{
+    "settings": {
+        "ptt_key": "scroll lock",
+        "openai_api_key": "",
+        "confidence_threshold": 50,
+        "models": {
+            "stt": "whisper-1",
+            "router": "gpt-4o-mini"
+        },
+        "audio": {
+            "sample_rate": 44100,
+            "ptt_sound_enabled": true,
+            "input_device": ""
+        }
+    },
+    "controllers": [
+        {
+            "name": "Controller 1",
+            "bindings": {
+                "A": "command 1",
+                "B": "command 2",
+                "X": "command 3",
+                "Y": "command 4",
+                "DPAD_UP": "command 5",
+                "DPAD_DOWN": "command 6",
+                "DPAD_LEFT": "command 7",
+                "DPAD_RIGHT": "command 8",
+                "LEFT_SHOULDER": "command 9",
+                "RIGHT_SHOULDER": "command 10",
+                "LEFT_THUMB": "command 11",
+                "RIGHT_THUMB": "command 12",
+                "BACK": "command 13",
+                "START": "command 14"
+            }
+        }
+    ],
+    "available_buttons": [
+        "A",
+        "B",
+        "X",
+        "Y",
+        "DPAD_UP",
+        "DPAD_DOWN",
+        "DPAD_LEFT",
+        "DPAD_RIGHT",
+        "LEFT_SHOULDER",
+        "RIGHT_SHOULDER",
+        "LEFT_THUMB",
+        "RIGHT_THUMB",
+        "BACK",
+        "START"
+    ]
+}
