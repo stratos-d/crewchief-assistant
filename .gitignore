@@ -22,7 +22,7 @@ ENV/
 env/
 
 # Poetry
-poetry.lock
+# poetry.lock is committed for reproducible installs
 
 # IDE
 .idea/

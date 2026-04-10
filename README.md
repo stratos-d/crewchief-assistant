@@ -1,8 +1,12 @@
 # CrewChief Assistant
 
-Voice-controlled virtual gamepad for sim racing. Hold a push-to-talk key, speak a command, and the app presses the corresponding virtual Xbox 360 controller button. Uses OpenAI Whisper for speech-to-text and GPT for intent mapping.
+Voice-controlled assistant for [CrewChief](https://thecrewchief.org). Speak a command, and the app presses a virtual Xbox 360 controller button — which you map to CrewChief's key bindings. This lets you trigger CrewChief actions like fuel reports, tire status, or pit requests entirely by voice.
 
-Works with any game that supports gamepad input.
+Uses OpenAI Whisper for speech-to-text and GPT for intent mapping. Works with any sim that supports gamepad input alongside CrewChief.
+
+## Why Not Just Use CrewChief's Built-in Voice Commands?
+
+CrewChief has its own voice recognition, but it relies on Windows Speech Recognition which requires exact phrases and often struggles with accuracy — especially with background noise or non-native accents. This app uses OpenAI's Whisper model, which is significantly more accurate and understands natural language. You don't need to memorize exact commands — just say what you mean and the AI figures out the intent.
 
 ## Requirements
 
@@ -14,11 +18,11 @@ Works with any game that supports gamepad input.
 
 This app creates virtual Xbox 360 controllers to send button presses to your game. ViGEmBus is the driver that makes this possible — without it, the app can't create virtual gamepads.
 
+If you install via `poetry install`, the ViGEmBus driver is installed automatically (you'll see an installer popup during setup). If you're using the pre-built `.exe`, you need to install it manually:
+
 1. Go to the [ViGEmBus releases page](https://github.com/nefarius/ViGEmBus/releases)
 2. Download the latest `ViGEmBus_Setup_x.x.x.exe`
 3. Run the installer and restart your PC if prompted
-
-You only need to do this once.
 
 ## Setup
 
@@ -35,7 +39,9 @@ Set your API key by copying `.env.example` to `.env`, or configure it in the app
 python main.py
 ```
 
-You can bind up to 3 virtual controllers with 14 buttons each. Commands are natural language — the AI matches intent, not exact wording. Right-click any button in the GUI to rename its command.
+The app creates up to 3 virtual Xbox 360 controllers with 14 buttons each. In CrewChief's settings, bind its actions (e.g. "fuel report", "tire status") to these virtual controller buttons. Then when you speak a command, the app presses the matching button and CrewChief responds.
+
+Commands are natural language — the AI matches intent, not exact wording. Right-click any button in the GUI to rename its command.
 
 ## Build
 

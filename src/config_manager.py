@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import shutil
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -12,10 +11,9 @@ load_dotenv()
 if getattr(sys, 'frozen', False):
     _BASE_DIR = os.path.dirname(sys.executable)
 else:
-    _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 CONFIG_PATH = os.path.join(_BASE_DIR, "config.json")
-_DEFAULT_CONFIG_PATH = os.path.join(_BASE_DIR, "config.default.json")
 _client = None
 
 DEFAULTS = {
@@ -33,7 +31,25 @@ DEFAULTS = {
         }
     },
     "controllers": [
-        {"name": "Controller 1", "bindings": {}}
+        {
+            "name": "Controller 1",
+            "bindings": {
+                "A": "command 1",
+                "B": "command 2",
+                "X": "command 3",
+                "Y": "command 4",
+                "DPAD_UP": "command 5",
+                "DPAD_DOWN": "command 6",
+                "DPAD_LEFT": "command 7",
+                "DPAD_RIGHT": "command 8",
+                "LEFT_SHOULDER": "command 9",
+                "RIGHT_SHOULDER": "command 10",
+                "LEFT_THUMB": "command 11",
+                "RIGHT_THUMB": "command 12",
+                "BACK": "command 13",
+                "START": "command 14"
+            }
+        }
     ],
     "available_buttons": [
         "A", "B", "X", "Y",
@@ -45,16 +61,16 @@ DEFAULTS = {
 }
 
 DEFAULT_THEME = {
-    "bg_color": "#0f1113",
-    "card_bg": "#1c1f23",
-    "accent_color": "#00e5ff",
-    "text_main": "#f8f9fa",
-    "text_dim": "#94a3b8",
-    "ready_green": "#00c853",
-    "stop_red": "#ff1744",
-    "proc_orange": "#ff9100",
-    "btn_bg": "#2d3436",
-    "term_bg": "#000000"
+    "bg_color": "#021526",
+    "card_bg": "#03346E",
+    "accent_color": "#6EACDA",
+    "text_main": "#e8edf3",
+    "text_dim": "#8aa0b8",
+    "ready_green": "#6EACDA",
+    "stop_red": "#e05555",
+    "proc_orange": "#E2E2B6",
+    "btn_bg": "#042d5a",
+    "term_bg": "#010e1c"
 }
 
 def _deep_merge(base, overlay):
@@ -70,10 +86,8 @@ def _deep_merge(base, overlay):
 def load_config():
     config = _deep_merge(DEFAULTS, {})
     if not os.path.exists(CONFIG_PATH):
-        # Copy default config on first run
-        if os.path.exists(_DEFAULT_CONFIG_PATH):
-            shutil.copy2(_DEFAULT_CONFIG_PATH, CONFIG_PATH)
-    if os.path.exists(CONFIG_PATH):
+        save_config(config)
+    else:
         with open(CONFIG_PATH, "r") as f:
             loaded = json.load(f)
             config = _deep_merge(config, loaded)

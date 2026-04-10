@@ -32,16 +32,26 @@ def get_gamepad(controller_index=0):
     global _gamepads
     if controller_index not in _gamepads:
         print(f"Initializing virtual controller {controller_index + 1}...")
-        _gamepads[controller_index] = vg.VX360Gamepad()
+        try:
+            _gamepads[controller_index] = vg.VX360Gamepad()
+        except Exception as e:
+            raise RuntimeError(
+                "Failed to create virtual controller. "
+                "Make sure ViGEmBus is installed: "
+                "https://github.com/nefarius/ViGEmBus/releases"
+            ) from e
         time.sleep(0.5)
     return _gamepads[controller_index]
 
 def init_all_gamepads():
     """Initialize all gamepads based on config."""
     controllers = get_controllers()
-    for i in range(len(controllers)):
-        get_gamepad(i)
-    print(f"Initialized {len(controllers)} virtual controller(s).")
+    try:
+        for i in range(len(controllers)):
+            get_gamepad(i)
+        print(f"Initialized {len(controllers)} virtual controller(s).")
+    except RuntimeError as e:
+        print(f"ERROR: {e}")
 
 def release_gamepad(controller_index):
     """Release and remove a virtual gamepad."""

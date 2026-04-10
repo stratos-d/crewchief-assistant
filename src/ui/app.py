@@ -122,7 +122,7 @@ class CrewChiefGUI:
 
         tk.Label(
             header,
-            text="CREWCHIEF",
+            text="CREWCHIEF ASSISTANT",
             font=self.fonts["lg"],
             bg=self.theme["bg_color"],
             fg=self.theme["accent_color"]
@@ -291,7 +291,7 @@ class CrewChiefGUI:
         self.terminal_text = tk.Text(
             term_frame,
             bg=self.theme["term_bg"],
-            fg=self.theme["text_main"],
+            fg="#E2E2B6",
             font=self.fonts["mono"],
             wrap=tk.WORD,
             state=tk.DISABLED,
@@ -521,14 +521,14 @@ class CrewChiefGUI:
 
     def _start_rebind(self):
         """Start PTT key rebinding."""
-        self.rebind_btn.config(text="LISTENING...", bg=self.theme["proc_orange"])
+        self.rebind_btn.config(text="LISTENING...", bg=self.theme["proc_orange"], fg=self.theme["bg_color"])
         self.key_display.config(text="???", fg=self.theme["proc_orange"])
         self.root.update()
         new_key = keyboard.read_key()
         self.ptt_key = new_key
         set_setting("ptt_key", self.ptt_key)
         self.key_display.config(text=self.ptt_key.upper(), fg=self.theme["accent_color"])
-        self.rebind_btn.config(text="CHANGE", bg=self.theme["btn_bg"])
+        self.rebind_btn.config(text="CHANGE", bg=self.theme["btn_bg"], fg=self.theme["text_main"])
         print(f"Trigger key: {self.ptt_key.upper()}")
 
     def _get_input_devices(self):

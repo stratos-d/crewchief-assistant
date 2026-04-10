@@ -14,7 +14,6 @@ a = Analysis(
     binaries=keyboard_binaries + vgamepad_binaries,
     datas=[
         ('resources', 'resources'),
-        ('config.default.json', '.'),
     ] + keyboard_datas + vgamepad_datas,
     hiddenimports=src_hiddenimports + [
         'keyboard',
@@ -41,10 +40,8 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[
         'matplotlib', 'notebook', 'jupyter', 'IPython',
-        'pandas', 'PIL', 'Pillow', 'setuptools',
-        'pkg_resources', 'xml', 'xmlrpc',
-        'test', 'pydoc', 'doctest', 'lib2to3',
-        'curses', 'multiprocessing',
+        'pandas', 'PIL', 'Pillow',
+        'lib2to3', 'test',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
