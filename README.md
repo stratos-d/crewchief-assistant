@@ -51,8 +51,6 @@ You have two ways to set up your voice commands:
 
 ### Method 2: CrewChief Auto-Sync
 
-**Note:** The sync tool maps actions to existing virtual controllers. It will not create new virtual controllers for you.
-
 1. Launch the Assistant app. It initializes 1 virtual controller by default.
 
 2. Initialize controllers. Click ADD CONTROLLER in the VIRTUAL CONTROLLERS section to add up to 3 total, depending on how many commands you need.
