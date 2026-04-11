@@ -2,6 +2,7 @@ import tkinter as tk
 import tkinter.font as tkfont
 import threading
 import sys
+import os
 import keyboard
 
 from src.config_manager import (
@@ -22,7 +23,8 @@ class CrewChiefGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("CrewChief Assistant")
-        self.root.geometry("520x700")
+        self.root.geometry("960x700")
+        self.root.minsize(800, 500)
 
         self._load_theme()
         self._setup_fonts()
@@ -48,9 +50,11 @@ class CrewChiefGUI:
         self.fonts = {
             "sm": tkfont.Font(family="Segoe UI", size=9),
             "base": tkfont.Font(family="Segoe UI", size=10, weight="bold"),
+            "section": tkfont.Font(family="Segoe UI", size=10, weight="bold"),
             "lg": tkfont.Font(family="Segoe UI", size=14, weight="bold"),
             "key": tkfont.Font(family="Consolas", size=10, weight="bold"),
-            "mono": tkfont.Font(family="Consolas", size=9)
+            "mono": tkfont.Font(family="Consolas", size=9),
+            "cmd": tkfont.Font(family="Segoe UI", size=8)
         }
 
     def _setup_scrollable_window(self):
@@ -106,14 +110,33 @@ class CrewChiefGUI:
     # --- UI Building ---
 
     def _build_ui(self):
-        """Build the main UI."""
-        self.main_container = tk.Frame(self.scrollable_frame, bg=self.theme["bg_color"], padx=25, pady=20)
+        """Build the main UI: top row (Control + Settings), bottom row (Controllers)."""
+        self.main_container = tk.Frame(self.scrollable_frame, bg=self.theme["bg_color"], padx=20, pady=15)
         self.main_container.pack(fill="both", expand=True)
 
+        # Header spans full width
         self._build_header()
-        self._build_controls()
-        self._build_system_log()
+
+        # Top row: Control + Settings side by side
+        top_row = tk.Frame(self.main_container, bg=self.theme["bg_color"])
+        top_row.pack(fill=tk.X, pady=(0, 12))
+        top_row.grid_columnconfigure(0, weight=1)
+        top_row.grid_columnconfigure(1, weight=1)
+        top_row.grid_rowconfigure(0, weight=1)
+
+        self.left_col = tk.Frame(top_row, bg=self.theme["bg_color"])
+        self.left_col.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+
+        self.right_top = tk.Frame(top_row, bg=self.theme["bg_color"])
+        self.right_top.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+
+        self._build_control_log()
         self._build_settings()
+
+        # Bottom row: Virtual Controllers full width
+        self.bottom_row = tk.Frame(self.main_container, bg=self.theme["bg_color"])
+        self.bottom_row.pack(fill="both", expand=True)
+
         self._build_command_binder()
 
     def _build_header(self):
@@ -135,13 +158,28 @@ class CrewChiefGUI:
             bg=self.theme["card_bg"],
             fg=self.theme["proc_orange"],
             padx=15,
-            pady=5
+            pady=5,
+            relief=tk.SOLID,
+            bd=1
         )
         self.status_pill.pack(side=tk.RIGHT)
 
-    def _build_controls(self):
-        ctrl_frame = tk.Frame(self.main_container, bg=self.theme["bg_color"])
-        ctrl_frame.pack(fill=tk.X, pady=(0, 15))
+    def _build_control_log(self):
+        """Build combined controls + system log card."""
+        log_card = tk.Frame(self.left_col, bg=self.theme["card_bg"], padx=15, pady=10)
+        log_card.pack(fill="both", expand=True)
+
+        tk.Label(
+            log_card,
+            text="CONTROL",
+            font=self.fonts["section"],
+            bg=self.theme["card_bg"],
+            fg=self.theme["accent_color"]
+        ).pack(anchor="w", pady=(0, 8))
+
+        # START / STOP buttons
+        ctrl_frame = tk.Frame(log_card, bg=self.theme["card_bg"])
+        ctrl_frame.pack(fill=tk.X, pady=(0, 10))
 
         self.start_btn = tk.Button(
             ctrl_frame,
@@ -149,36 +187,61 @@ class CrewChiefGUI:
             font=self.fonts["base"],
             bg=self.theme["btn_bg"],
             fg=self.theme["text_main"],
+            activebackground=self.theme["ready_green"],
+            activeforeground=self.theme["bg_color"],
             relief=tk.FLAT,
-            pady=10,
+            pady=8,
+            cursor="hand2",
             command=self._start_engine,
             state=tk.DISABLED
         )
-        self.start_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
+        self.start_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 4))
 
         self.stop_btn = tk.Button(
             ctrl_frame,
             text="STOP",
             font=self.fonts["base"],
             bg=self.theme["btn_bg"],
-            fg=self.theme["text_main"],
+            fg=self.theme["text_dim"],
+            activebackground=self.theme["stop_red"],
+            activeforeground=self.theme["text_main"],
             relief=tk.FLAT,
-            pady=10,
+            pady=8,
+            cursor="hand2",
             command=self._stop_engine,
             state=tk.DISABLED
         )
-        self.stop_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5, 0))
+        self.stop_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(4, 0))
+
+        # System log
+        term_frame = tk.Frame(log_card, bg=self.theme["term_bg"])
+        term_frame.pack(fill="both", expand=True)
+
+        self.terminal_text = tk.Text(
+            term_frame,
+            bg=self.theme["term_bg"],
+            fg="#E2E2B6",
+            font=self.fonts["mono"],
+            wrap=tk.WORD,
+            state=tk.DISABLED,
+            borderwidth=0,
+            padx=10,
+            pady=8,
+            height=12,
+            width=30
+        )
+        self.terminal_text.pack(fill="both", expand=True)
 
     def _build_settings(self):
-        settings_card = tk.Frame(self.main_container, bg=self.theme["card_bg"], padx=15, pady=10)
-        settings_card.pack(fill=tk.X, pady=(0, 20))
+        settings_card = tk.Frame(self.right_top, bg=self.theme["card_bg"], padx=15, pady=10)
+        settings_card.pack(fill="both", expand=True)
 
         tk.Label(
             settings_card,
             text="SETTINGS",
-            font=self.fonts["sm"],
+            font=self.fonts["section"],
             bg=self.theme["card_bg"],
-            fg=self.theme["text_dim"]
+            fg=self.theme["accent_color"]
         ).pack(anchor="w", pady=(0, 12))
 
         # --- API Section ---
@@ -194,9 +257,9 @@ class CrewChiefGUI:
         tk.Label(
             settings_card,
             text="VOICE",
-            font=self.fonts["sm"],
+            font=self.fonts["section"],
             bg=self.theme["card_bg"],
-            fg=self.theme["text_dim"]
+            fg=self.theme["accent_color"]
         ).pack(anchor="w", pady=(0, 8))
 
         # Input Device row
@@ -273,46 +336,50 @@ class CrewChiefGUI:
         threshold_row.add_suffix("%")
         threshold_row.add_button("APPLY", self._save_threshold)
 
-    def _build_system_log(self):
-        log_card = tk.Frame(self.main_container, bg=self.theme["card_bg"], padx=15, pady=10)
-        log_card.pack(fill=tk.X, pady=(0, 20))
-
-        tk.Label(
-            log_card,
-            text="SYSTEM LOG",
-            font=self.fonts["sm"],
-            bg=self.theme["card_bg"],
-            fg=self.theme["text_dim"]
-        ).pack(anchor="w", pady=(0, 8))
-
-        term_frame = tk.Frame(log_card, bg=self.theme["term_bg"])
-        term_frame.pack(fill=tk.X)
-
-        self.terminal_text = tk.Text(
-            term_frame,
-            bg=self.theme["term_bg"],
-            fg="#E2E2B6",
-            font=self.fonts["mono"],
-            wrap=tk.WORD,
-            state=tk.DISABLED,
-            borderwidth=0,
-            padx=12,
-            pady=10,
-            height=6
-        )
-        self.terminal_text.pack(fill="both", expand=True)
-
     def _build_command_binder(self):
-        self.binder_card = tk.Frame(self.main_container, bg=self.theme["card_bg"], padx=15, pady=10)
-        self.binder_card.pack(fill=tk.X, pady=(0, 20))
+        self.binder_card = tk.Frame(self.bottom_row, bg=self.theme["card_bg"], padx=15, pady=10)
+        self.binder_card.pack(fill="both", expand=True)
+
+        header_frame = tk.Frame(self.binder_card, bg=self.theme["card_bg"])
+        header_frame.pack(fill=tk.X, pady=(0, 12))
 
         tk.Label(
-            self.binder_card,
+            header_frame,
             text="VIRTUAL CONTROLLERS",
-            font=self.fonts["sm"],
+            font=self.fonts["section"],
             bg=self.theme["card_bg"],
-            fg=self.theme["text_dim"]
-        ).pack(anchor="w", pady=(0, 12))
+            fg=self.theme["accent_color"]
+        ).pack(side=tk.LEFT)
+
+        self.sync_btn = tk.Button(
+            header_frame,
+            text="SYNC WITH CREWCHIEF",
+            font=self.fonts["sm"],
+            bg=self.theme["accent_color"],
+            fg=self.theme["bg_color"],
+            activebackground=self.theme["accent_color"],
+            activeforeground=self.theme["bg_color"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=10,
+            command=self._sync_crewchief
+        )
+        self.sync_btn.pack(side=tk.RIGHT)
+
+        self.add_ctrl_btn = tk.Button(
+            header_frame,
+            text="ADD CONTROLLER",
+            font=self.fonts["sm"],
+            bg=self.theme["btn_bg"],
+            fg=self.theme["text_main"],
+            activebackground=self.theme["ready_green"],
+            activeforeground=self.theme["bg_color"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=10,
+            command=self._add_new_controller
+        )
+        self.add_ctrl_btn.pack(side=tk.RIGHT, padx=(0, 6))
 
         # Container for all controllers
         self.controllers_frame = tk.Frame(self.binder_card, bg=self.theme["card_bg"])
@@ -326,6 +393,12 @@ class CrewChiefGUI:
         controllers = get_controllers()
         for idx, controller in enumerate(controllers):
             self._build_controller_section(idx, controller, len(controllers))
+
+        # Show/hide ADD CONTROLLER based on limit
+        if len(controllers) >= 3:
+            self.add_ctrl_btn.pack_forget()
+        else:
+            self.add_ctrl_btn.pack(side=tk.RIGHT, padx=(0, 6))
 
     def _build_controller_section(self, idx, controller, total_controllers):
         """Build UI section for a single controller."""
@@ -356,35 +429,18 @@ class CrewChiefGUI:
         if idx > 0:
             remove_btn = tk.Button(
                 btn_frame,
-                text="✕",
+                text="REMOVE",
                 font=("Segoe UI", 8),
                 bg=self.theme["card_bg"],
                 fg=self.theme["stop_red"],
-                activebackground=self.theme["card_bg"],
-                activeforeground=self.theme["stop_red"],
+                activebackground=self.theme["stop_red"],
+                activeforeground=self.theme["text_main"],
                 relief=tk.FLAT,
                 bd=0,
                 cursor="hand2",
                 command=lambda i=idx: self._remove_controller(i)
             )
-            remove_btn.pack(side=tk.LEFT, padx=(0, 4))
-
-        # Show + button only on last controller and if < 3 total
-        if idx == total_controllers - 1 and total_controllers < 3:
-            add_btn = tk.Button(
-                btn_frame,
-                text="+",
-                font=("Segoe UI", 10),
-                bg=self.theme["card_bg"],
-                fg=self.theme["ready_green"],
-                activebackground=self.theme["card_bg"],
-                activeforeground=self.theme["ready_green"],
-                relief=tk.FLAT,
-                bd=0,
-                cursor="hand2",
-                command=self._add_new_controller
-            )
-            add_btn.pack(side=tk.LEFT)
+            remove_btn.pack(side=tk.LEFT, padx=(0, 8))
 
         # Button grid
         btn_grid = tk.Frame(ctrl_frame, bg=self.theme["card_bg"])
@@ -395,12 +451,23 @@ class CrewChiefGUI:
             btn_grid.grid_columnconfigure(col, weight=1)
 
         bindings = controller.get("bindings", {})
+        items = list(bindings.items())
         row, col = 0, 0
-        for button_key, command in bindings.items():
+        prev_group = None
+        for button_key, command in items:
+            # Detect group by first word(s) for visual clustering
+            group = self._get_command_group(command)
+            if prev_group is not None and group != prev_group and col == 0:
+                # Add spacing row between groups
+                spacer = tk.Frame(btn_grid, bg=self.theme["card_bg"], height=6)
+                spacer.grid(row=row, column=0, columnspan=num_cols, sticky=tk.EW)
+                row += 1
+            prev_group = group
+
             btn = tk.Button(
                 btn_grid,
-                text=command.upper(),
-                font=("Segoe UI", 8, "bold"),
+                text=command.replace("_", " ").capitalize(),
+                font=self.fonts["cmd"],
                 relief=tk.FLAT,
                 bg=self.theme["bg_color"],
                 fg=self.theme["text_dim"],
@@ -418,6 +485,24 @@ class CrewChiefGUI:
             if col >= num_cols:
                 col, row = 0, row + 1
 
+    @staticmethod
+    def _get_command_group(command):
+        """Categorize a command into a group for visual clustering."""
+        cmd = command.lower().replace("_", " ")
+        if any(cmd.startswith(p) for p in ["hows my", "how are my", "how is my"]):
+            return "status"
+        if any(cmd.startswith(p) for p in ["whats my", "what was my", "whats the", "what are my"]):
+            return "info"
+        if any(p in cmd for p in ["pit", "fuel", "tyre", "tire"]):
+            return "pit_tyre"
+        if any(p in cmd for p in ["gap", "ahead", "behind", "position", "front", "leading"]):
+            return "position"
+        if any(p in cmd for p in ["lap time", "best lap", "fastest"]):
+            return "timing"
+        if any(cmd.startswith(p) for p in ["toggle", "set"]):
+            return "toggle"
+        return "other"
+
     def _add_new_controller(self):
         """Add a new controller with default bindings."""
         from src.config_manager import get_available_buttons
@@ -431,7 +516,7 @@ class CrewChiefGUI:
             # Generate default bindings like "button 1", "button 2", etc.
             buttons = get_available_buttons()
             for i, btn_key in enumerate(buttons):
-                cmd_name = f"button {new_idx * len(buttons) + i + 1}"
+                cmd_name = f"command {new_idx * len(buttons) + i + 1}"
                 rename_binding(new_idx, btn_key, cmd_name)
 
             # Initialize the virtual gamepad for this controller
@@ -470,6 +555,67 @@ class CrewChiefGUI:
         self._load_binding_buttons()
         print(f"Renamed '{old_command}' to '{new_command}'")
 
+    def _sync_crewchief(self):
+        """Sync bindings with CrewChief's config file."""
+        from tkinter import filedialog, messagebox
+        from src.crewchief_sync import sync_crewchief_config
+        from src.config_manager import load_config, save_config
+
+        # Get saved path or use default
+        default_path = get_setting("crewchief_config_path", "")
+        if not default_path:
+            default_path = os.path.join(
+                os.path.expanduser("~"),
+                "Documents", "CrewChiefV4", "Profiles", "ControllerData", "defaultSettings.json"
+            )
+
+        # File picker
+        config_path = filedialog.askopenfilename(
+            title="Select CrewChief defaultSettings.json",
+            initialdir=os.path.dirname(default_path),
+            initialfile=os.path.basename(default_path),
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+
+        if not config_path:
+            return
+
+        # Save the path for next time
+        set_setting("crewchief_config_path", config_path)
+
+        # Confirmation
+        proceed = messagebox.askyesno(
+            "Sync with CrewChief",
+            "This will overwrite CrewChief's button assignments for actions marked as available.\n\n"
+            "A backup of the original file will be created.\n\n"
+            "Continue?"
+        )
+
+        if not proceed:
+            return
+
+        # Run sync with existing controllers
+        config = load_config()
+        existing_controllers = config.get("controllers", [])
+        result = sync_crewchief_config(config_path, existing_controllers)
+
+        if not result["success"]:
+            messagebox.showerror("Sync Failed", result["message"])
+            print(f"Sync failed: {result['message']}")
+            return
+
+        # Update app config with new bindings
+        config = load_config()
+        config["controllers"] = result["bindings"]
+        save_config(config)
+
+        # Reload UI
+        self._load_binding_buttons()
+        print(f"CrewChief sync complete: {result['message']}")
+
+        if result["truncated"]:
+            messagebox.showwarning("Sync Warning", result["message"])
+
     def _manual_trigger_controller(self, controller_index, command):
         """Manually trigger a command on a specific controller."""
         from src.config_manager import find_command_controller
@@ -490,7 +636,7 @@ class CrewChiefGUI:
         """Complete startup on main thread."""
         print("Initialization complete.")
         self._update_status("READY", self.theme["ready_green"])
-        self.start_btn.config(state=tk.NORMAL, bg=self.theme["ready_green"])
+        self.start_btn.config(state=tk.NORMAL, bg=self.theme["ready_green"], fg=self.theme["bg_color"])
         self.rebind_btn.config(state=tk.NORMAL)
         self._load_binding_buttons()
 
@@ -506,8 +652,8 @@ class CrewChiefGUI:
     def _start_engine(self):
         """Start the voice engine."""
         self._update_status("READY", self.theme["ready_green"])
-        self.start_btn.config(state=tk.DISABLED, bg=self.theme["btn_bg"])
-        self.stop_btn.config(state=tk.NORMAL, bg=self.theme["stop_red"])
+        self.start_btn.config(state=tk.DISABLED, bg=self.theme["btn_bg"], fg=self.theme["text_dim"])
+        self.stop_btn.config(state=tk.NORMAL, bg=self.theme["stop_red"], fg=self.theme["text_main"])
         self.rebind_btn.config(state=tk.DISABLED)
         self.engine.start(self.ptt_key)
 
@@ -515,8 +661,8 @@ class CrewChiefGUI:
         """Stop the voice engine."""
         self.engine.stop()
         self._update_status("OFFLINE", self.theme["text_dim"])
-        self.start_btn.config(state=tk.NORMAL, bg=self.theme["ready_green"])
-        self.stop_btn.config(state=tk.DISABLED, bg=self.theme["btn_bg"])
+        self.start_btn.config(state=tk.NORMAL, bg=self.theme["ready_green"], fg=self.theme["bg_color"])
+        self.stop_btn.config(state=tk.DISABLED, bg=self.theme["btn_bg"], fg=self.theme["text_dim"])
         self.rebind_btn.config(state=tk.NORMAL)
 
     def _start_rebind(self):

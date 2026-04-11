@@ -56,9 +56,11 @@ class SettingsRow:
         tk.Label(
             self.frame,
             text=label_text,
-            font=fonts["base"],
+            font=fonts["sm"],
             bg=colors["card_bg"],
-            fg=colors["text_main"]
+            fg=colors["text_dim"],
+            width=18,
+            anchor="w"
         ).pack(side=tk.LEFT)
 
     def pack(self, **kwargs):
@@ -78,7 +80,7 @@ class SettingsRow:
             relief=tk.SOLID,
             bd=1
         )
-        label.pack(side=tk.LEFT, padx=15)
+        label.pack(side=tk.LEFT, padx=(4, 0))
         return label
 
     def add_status_label(self, is_set):
@@ -96,7 +98,7 @@ class SettingsRow:
             relief=tk.SOLID,
             bd=1
         )
-        label.pack(side=tk.LEFT, padx=15)
+        label.pack(side=tk.LEFT, padx=(4, 0))
         return label
 
     def add_button(self, text, command, state=tk.NORMAL):
@@ -108,8 +110,9 @@ class SettingsRow:
             relief=tk.FLAT,
             bg=self.colors["btn_bg"],
             fg=self.colors["text_main"],
-            padx=12,
+            width=10,
             pady=4,
+            cursor="hand2",
             command=command,
             state=state
         )
@@ -129,7 +132,7 @@ class SettingsRow:
             justify="center",
             textvariable=var
         )
-        entry.pack(side=tk.LEFT, padx=15, ipady=2)
+        entry.pack(side=tk.LEFT, padx=(4, 0), ipady=2)
         return entry
 
     def add_suffix(self, text):
@@ -137,7 +140,7 @@ class SettingsRow:
         tk.Label(
             self.frame,
             text=text,
-            font=self.fonts["base"],
+            font=self.fonts["sm"],
             bg=self.colors["card_bg"],
             fg=self.colors["text_dim"]
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, padx=(2, 0))
