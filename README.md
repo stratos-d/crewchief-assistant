@@ -53,9 +53,13 @@ You have two ways to set up your voice commands:
 
 ### Method 2: CrewChief Auto-Sync
 
+<<<<<<< HEAD
 The sync tool automatically maps all available CrewChief actions to your virtual controllers. Follow these steps **in order**:
 
 1. **Launch the Assistant app.** It initializes 1 virtual X360 controller by default.
+=======
+1. Launch the Assistant app. It initializes 1 virtual controller by default.
+>>>>>>> 15f27d95c6369b4006a29b1e7b05fdb416b2bce3
 
 2. **Add controllers.** Click ADD CONTROLLER to add up to 3 total (X360 or DS4). The more controllers you add, the more actions you can bind.
 
