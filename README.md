@@ -59,23 +59,19 @@ The sync tool automatically maps all available CrewChief actions to your virtual
 
 2. **Add controllers.** Click ADD CONTROLLER to add up to 3 total (X360 or DS4). The more controllers you add, the more actions you can bind.
 
-3. **Launch CrewChief.** Start CrewChief so it can detect your virtual controllers.
+3. **Register controllers in CrewChief.** Launch CrewChief, go to *Controller settings*, and click each button on the virtual controllers (in the Assistant app) so CrewChief detects them. Then close CrewChief so it saves the detected devices to its config file.
 
-4. **Let CrewChief scan the controllers.** In CrewChief, go to *Controller settings*. Press each button on the virtual controllers (click them in the Assistant app) so CrewChief registers the devices and their buttons. This ensures CrewChief writes the correct device GUIDs into its configuration.
+4. **Run the sync.** Back in the Assistant app, click SYNC WITH CREWCHIEF.
 
-5. **Save CrewChief's configuration.** Close CrewChief (or manually save your profile). CrewChief must write the detected controller GUIDs to its config file before the sync can work.
-
-6. **Run the sync.** Back in the Assistant app, click SYNC WITH CREWCHIEF.
-
-7. **Select the configuration file** when prompted.
+5. **Select the configuration file** when prompted.
    - Default path: `Documents\CrewChiefV4\Profiles\ControllerData\defaultSettings.json`
 
-8. **Sync completes.** The app will automatically:
+6. **Sync completes.** The app will automatically:
    - Back up the original CrewChief configuration.
    - Map all available CrewChief actions to your virtual controllers.
    - Update button bindings in the app to match.
 
-9. **Restart CrewChief.** The sync writes directly to CrewChief's config file. **You must restart CrewChief** for the new bindings to take effect.
+7. **Restart CrewChief.** The sync writes directly to CrewChief's config file. **You must restart CrewChief** for the new bindings to take effect.
 
 ### Voice Commands
 
