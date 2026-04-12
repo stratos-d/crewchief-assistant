@@ -1,6 +1,6 @@
 # CrewChief Assistant
 
-AI-powered voice assistant for [CrewChief](https://thecrewchief.org). Say what you need — fuel report, tire status, pit request — and the app triggers the corresponding CrewChief action for you. Uses OpenAI Whisper for speech recognition and GPT for intent mapping, so you can speak naturally instead of memorizing exact phrases.
+LLM-powered voice assistant for [CrewChief](https://thecrewchief.org). Say what you need — fuel report, tire status, pit request — and the app triggers the corresponding CrewChief action for you. Uses OpenAI Whisper for speech recognition and GPT for intent mapping, so you can speak naturally instead of memorizing exact phrases.
 
 The app works by emulating virtual game controllers (**Xbox 360** or **DualShock 4**) via ViGEmBus. Each controller button is mapped to a CrewChief action. When you speak a command, the app presses the right button automatically. Virtual controllers are used instead of keyboard shortcuts so there are no conflicts with your game or sim keybinds.
 
@@ -8,7 +8,7 @@ The app works by emulating virtual game controllers (**Xbox 360** or **DualShock
 
 ## Why Not Just Use CrewChief's Built-in Voice Commands?
 
-CrewChief has its own voice recognition, but it relies on Windows Speech Recognition which requires exact phrases and often struggles with accuracy — especially with background noise or non-native accents. This app uses OpenAI's Whisper model, which is significantly more accurate and understands natural language. You don't need to memorize exact commands — just say what you mean and the AI figures out the intent.
+CrewChief has its own voice recognition, but it relies on Windows Speech Recognition which requires exact phrases and often struggles with accuracy — especially with background noise or non-native accents. This app uses OpenAI's Whisper model, which is significantly more accurate and understands natural language. You don't need to memorize exact commands — just say what you mean and the LLM figures out the intent.
 
 ## Requirements
 
@@ -86,7 +86,7 @@ Once set up, press START in the app, hold your Push-to-Talk key (default: Scroll
 - "Request pit stop"
 - "Gap to the car ahead"
 
-Any variation works — the AI understands the intent, not just exact phrases.
+Any variation works — the LLM understands the intent, not just exact phrases.
 
 ### Settings
 
@@ -96,7 +96,7 @@ Configure the application in the SETTINGS panel:
 - **Input Device** — Choose your microphone.
 - **Push to Talk Key** — Default: Scroll Lock.
 - **Audio Feedback** — Plays a beep when voice recording starts/stops.
-- **Min. Confidence** — Minimum AI confidence threshold to accept a command (0-100%).
+- **Min. Confidence** — Minimum LLM confidence threshold to accept a command (0-100%).
 
 ## Build
 
