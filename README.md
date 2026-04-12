@@ -59,7 +59,7 @@ The sync tool automatically maps all available CrewChief actions to your virtual
 
 2. **Add controllers.** Click ADD CONTROLLER to add up to 3 total (X360 or DS4). The more controllers you add, the more actions you can bind.
 
-3. **Register controllers in CrewChief.** Launch CrewChief, go to *Controller settings*, and click each button on the virtual controllers (in the Assistant app) so CrewChief detects them. Then close CrewChief so it saves the detected devices to its config file.
+3. **Register controllers in CrewChief.** Launch CrewChief and click *Scan for controllers* in the controller settings. This writes the virtual controller GUIDs to CrewChief's config file. Then close CrewChief.
 
 4. **Run the sync.** Back in the Assistant app, click SYNC WITH CREWCHIEF.
 
