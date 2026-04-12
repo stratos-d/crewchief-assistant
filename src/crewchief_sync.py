@@ -2,26 +2,50 @@ import os
 import json
 import shutil
 from datetime import datetime
+from src.constants import ControllerType
 
-# Hardware schema: button order for sequential assignment
-BUTTON_SCHEMA = [
-    {"id": "A", "buttonIndex": 0, "usePovData": False, "povValue": 0},
-    {"id": "B", "buttonIndex": 1, "usePovData": False, "povValue": 0},
-    {"id": "X", "buttonIndex": 2, "usePovData": False, "povValue": 0},
-    {"id": "Y", "buttonIndex": 3, "usePovData": False, "povValue": 0},
-    {"id": "LEFT_SHOULDER", "buttonIndex": 4, "usePovData": False, "povValue": 0},
+# Hardware schema: button order for sequential assignment (X360)
+BUTTON_SCHEMA_X360 = [
+    {"id": "A",              "buttonIndex": 0, "usePovData": False, "povValue": 0},
+    {"id": "B",              "buttonIndex": 1, "usePovData": False, "povValue": 0},
+    {"id": "X",              "buttonIndex": 2, "usePovData": False, "povValue": 0},
+    {"id": "Y",              "buttonIndex": 3, "usePovData": False, "povValue": 0},
+    {"id": "LEFT_SHOULDER",  "buttonIndex": 4, "usePovData": False, "povValue": 0},
     {"id": "RIGHT_SHOULDER", "buttonIndex": 5, "usePovData": False, "povValue": 0},
-    {"id": "BACK", "buttonIndex": 6, "usePovData": False, "povValue": 0},
-    {"id": "START", "buttonIndex": 7, "usePovData": False, "povValue": 0},
-    {"id": "LEFT_THUMB", "buttonIndex": 8, "usePovData": False, "povValue": 0},
-    {"id": "RIGHT_THUMB", "buttonIndex": 9, "usePovData": False, "povValue": 0},
-    {"id": "DPAD_UP", "buttonIndex": 0, "usePovData": True, "povValue": 0},
-    {"id": "DPAD_RIGHT", "buttonIndex": 0, "usePovData": True, "povValue": 9000},
-    {"id": "DPAD_DOWN", "buttonIndex": 0, "usePovData": True, "povValue": 18000},
-    {"id": "DPAD_LEFT", "buttonIndex": 0, "usePovData": True, "povValue": 27000},
+    {"id": "BACK",           "buttonIndex": 6, "usePovData": False, "povValue": 0},
+    {"id": "START",          "buttonIndex": 7, "usePovData": False, "povValue": 0},
+    {"id": "LEFT_THUMB",     "buttonIndex": 8, "usePovData": False, "povValue": 0},
+    {"id": "RIGHT_THUMB",    "buttonIndex": 9, "usePovData": False, "povValue": 0},
+    {"id": "DPAD_UP",        "buttonIndex": 0, "usePovData": True,  "povValue": 0},
+    {"id": "DPAD_RIGHT",     "buttonIndex": 0, "usePovData": True,  "povValue": 9000},
+    {"id": "DPAD_DOWN",      "buttonIndex": 0, "usePovData": True,  "povValue": 18000},
+    {"id": "DPAD_LEFT",      "buttonIndex": 0, "usePovData": True,  "povValue": 27000},
 ]
 
-BUTTONS_PER_CONTROLLER = len(BUTTON_SCHEMA)
+# DS4 button schema — DirectInput indices (L2=6, R2=7 occupy slots between R1 and SHARE)
+BUTTON_SCHEMA_DS4 = [
+    {"id": "CROSS",    "buttonIndex": 1,  "usePovData": False, "povValue": 0},
+    {"id": "CIRCLE",   "buttonIndex": 2,  "usePovData": False, "povValue": 0},
+    {"id": "SQUARE",   "buttonIndex": 0,  "usePovData": False, "povValue": 0},
+    {"id": "TRIANGLE", "buttonIndex": 3,  "usePovData": False, "povValue": 0},
+    {"id": "L1",       "buttonIndex": 4,  "usePovData": False, "povValue": 0},
+    {"id": "R1",       "buttonIndex": 5,  "usePovData": False, "povValue": 0},
+    {"id": "SHARE",    "buttonIndex": 8,  "usePovData": False, "povValue": 0},
+    {"id": "OPTIONS",  "buttonIndex": 9,  "usePovData": False, "povValue": 0},
+    {"id": "L3",       "buttonIndex": 10, "usePovData": False, "povValue": 0},
+    {"id": "R3",       "buttonIndex": 11, "usePovData": False, "povValue": 0},
+    {"id": "DPAD_UP",  "buttonIndex": 0,  "usePovData": True,  "povValue": 0},
+    {"id": "DPAD_RIGHT","buttonIndex": 0, "usePovData": True,  "povValue": 9000},
+    {"id": "DPAD_DOWN","buttonIndex": 0,  "usePovData": True,  "povValue": 18000},
+    {"id": "DPAD_LEFT","buttonIndex": 0,  "usePovData": True,  "povValue": 27000},
+]
+
+BUTTON_SCHEMA_BY_TYPE = {
+    ControllerType.X360: BUTTON_SCHEMA_X360,
+    ControllerType.DS4: BUTTON_SCHEMA_DS4,
+}
+
+BUTTONS_PER_CONTROLLER = len(BUTTON_SCHEMA_X360)
 MAX_CONTROLLERS = 3
 MAX_ACTIONS = BUTTONS_PER_CONTROLLER * MAX_CONTROLLERS
 
@@ -35,13 +59,24 @@ def action_to_command(action):
     return cmd
 
 
-def extract_xbox_guids(devices):
-    """Extract GUIDs for virtual Xbox 360 controllers from the devices list."""
-    guids = []
+# Device identification: (name_substring, deviceType) — either match is sufficient
+DEVICE_PATTERNS = {
+    ControllerType.X360:     ("XBOX 360 For Windows", None),
+    ControllerType.DS4:      ("Wireless Controller",  24),
+}
+
+
+def extract_guids_by_type(devices):
+    """Return a dict mapping ControllerType -> list of GUIDs found in CrewChief devices."""
+    result = {t: [] for t in DEVICE_PATTERNS}
     for device in devices:
-        if "XBOX 360 For Windows" in device.get("deviceName", ""):
-            guids.append(device["guid"])
-    return guids
+        name = device.get("deviceName", "")
+        dtype = device.get("deviceType")
+        for ctrl_type, (name_pattern, type_id) in DEVICE_PATTERNS.items():
+            if name_pattern in name or (type_id is not None and dtype == type_id):
+                result[ctrl_type].append(device["guid"])
+                break
+    return result
 
 
 def get_available_actions(button_assignments):
@@ -83,79 +118,96 @@ def sync_crewchief_config(crewchief_config_path, existing_controllers):
     devices = cc_config.get("devices", [])
     button_assignments = cc_config.get("buttonAssignments", [])
 
-    # Extract virtual controller GUIDs
-    guids = extract_xbox_guids(devices)
-    if not guids:
+    # Extract virtual controller GUIDs grouped by type
+    guids_by_type = extract_guids_by_type(devices)
+    # Build a flat ordered list of GUIDs matching the gamepad controllers in the app
+    # (resolved below after gamepad_controllers is determined)
+
+    # Collect all syncable controllers (virtual gamepads only)
+    syncable_controllers = [c for c in existing_controllers if c.get("type") in BUTTON_SCHEMA_BY_TYPE]
+    if not syncable_controllers:
         return {
             "success": False,
-            "message": "No virtual Xbox 360 controllers found in CrewChief config. "
-                       "Make sure the app is running and CrewChief has discovered the controllers.",
+            "message": "No controllers found to sync.",
             "bindings": [],
             "action_count": 0,
             "truncated": False,
         }
 
-    # Only sync with existing controllers from the app
-    if not existing_controllers:
+    # Build ordered GUID list matching each controller by type
+    type_counters = {t: 0 for t in DEVICE_PATTERNS}
+    guids = []
+    missing = []
+    for ctrl in syncable_controllers:
+        ctrl_type = ControllerType(ctrl.get("type", ControllerType.X360))
+        idx = type_counters[ctrl_type]
+        available = guids_by_type.get(ctrl_type, [])
+        if idx < len(available):
+            guids.append(available[idx])
+        else:
+            missing.append(ctrl_type.label)
+        type_counters[ctrl_type] += 1
+
+    if missing:
         return {
             "success": False,
-            "message": "No controllers found in the app. Add controllers first using ADD CONTROLLER.",
+            "message": f"Missing controllers in CrewChief config: {', '.join(missing)}. "
+                       "Make sure the app is running and CrewChief has detected all controllers.",
             "bindings": [],
             "action_count": 0,
             "truncated": False,
         }
 
-    # Limit GUIDs to match existing controller count
-    max_controllers = min(len(existing_controllers), MAX_CONTROLLERS)
-    guids = guids[:max_controllers]
+    max_controllers = min(len(syncable_controllers), MAX_CONTROLLERS)
 
-    if len(guids) < len(existing_controllers):
-        return {
-            "success": False,
-            "message": f"Not enough virtual controllers found in CrewChief config. Found {len(guids)}, but app has {len(existing_controllers)}. Make sure CrewChief has discovered all controllers.",
-            "bindings": [],
-            "action_count": 0,
-            "truncated": False,
-        }
-
-    # Get available actions
+    # Get available actions (each controller has its own schema length)
     available = get_available_actions(button_assignments)
-    truncated = len(available) > len(guids) * BUTTONS_PER_CONTROLLER
-    max_assignable = len(guids) * BUTTONS_PER_CONTROLLER
-    actions_to_assign = available[:max_assignable]
+    total_slots = sum(len(BUTTON_SCHEMA_BY_TYPE[ControllerType(c.get("type", ControllerType.X360))]) for c in syncable_controllers)
+    truncated = len(available) > total_slots
+    actions_to_assign = available[:total_slots]
 
     # Backup original file
     backup_path = crewchief_config_path + f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     shutil.copy2(crewchief_config_path, backup_path)
 
-    # Use existing controller structure from app
-    app_controllers = []
-    for controller in existing_controllers[:max_controllers]:
-        app_controllers.append({
-            "name": controller.get("name", f"Controller {len(app_controllers) + 1}"),
-            "bindings": controller.get("bindings", {})
-        })
+    # Build index: syncable controller position -> index in app_controllers
+    app_controllers = list(existing_controllers)
+    syncable_indices = [i for i, c in enumerate(app_controllers) if c.get("type") in BUTTON_SCHEMA_BY_TYPE]
+
+    # Pre-compute slot offsets per syncable controller
+    slot_offsets = []  # (start_slot, schema) for each syncable controller
+    offset = 0
+    for ctrl in syncable_controllers:
+        schema = BUTTON_SCHEMA_BY_TYPE[ControllerType(ctrl.get("type", ControllerType.X360))]
+        slot_offsets.append((offset, schema))
+        offset += len(schema)
 
     for idx, assignment in enumerate(actions_to_assign):
-        controller_idx = idx // BUTTONS_PER_CONTROLLER
-        button_idx = idx % BUTTONS_PER_CONTROLLER
-        schema = BUTTON_SCHEMA[button_idx]
-        guid = guids[controller_idx]
+        # Find which syncable controller this slot belongs to
+        sync_ctrl_idx = next(
+            i for i, (start, schema) in enumerate(slot_offsets)
+            if start <= idx < start + len(schema)
+        )
+        button_idx = idx - slot_offsets[sync_ctrl_idx][0]
+        ctrl_schema = slot_offsets[sync_ctrl_idx][1]
+        btn = ctrl_schema[button_idx]
+        guid = guids[sync_ctrl_idx]
+        app_ctrl_idx = syncable_indices[sync_ctrl_idx]
 
         # Update CrewChief assignment
         assignment["deviceGuid"] = guid
-        assignment["buttonIndex"] = schema["buttonIndex"]
-        assignment["usePovData"] = schema["usePovData"]
-        assignment["povValue"] = schema["povValue"]
+        assignment["buttonIndex"] = btn["buttonIndex"]
+        assignment["usePovData"] = btn["usePovData"]
+        assignment["povValue"] = btn["povValue"]
 
         # Only update app binding if this button already exists in the controller
-        existing_bindings = app_controllers[controller_idx]["bindings"]
-        if schema["id"] in existing_bindings:
+        existing_bindings = app_controllers[app_ctrl_idx]["bindings"]
+        if btn["id"] in existing_bindings:
             command_name = action_to_command(assignment["action"])
-            existing_bindings[schema["id"]] = command_name
+            existing_bindings[btn["id"]] = command_name
 
     # Clear assignments for actions beyond capacity (if any were previously assigned)
-    for assignment in available[max_assignable:]:
+    for assignment in available[total_slots:]:
         assignment["deviceGuid"] = ""
         assignment["buttonIndex"] = -1
         assignment["usePovData"] = False
@@ -169,7 +221,7 @@ def sync_crewchief_config(crewchief_config_path, existing_controllers):
         "success": True,
         "message": f"Synced {len(actions_to_assign)} actions across {len(guids)} controller(s). "
                    f"Backup saved to: {os.path.basename(backup_path)}"
-                   + (f"\nWarning: {len(available) - max_assignable} actions were truncated (max {max_assignable})."
+                   + (f"\nWarning: {len(available) - total_slots} actions were truncated (max {total_slots})."
                       if truncated else ""),
         "bindings": app_controllers,
         "action_count": len(actions_to_assign),

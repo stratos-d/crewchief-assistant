@@ -3,6 +3,7 @@ import sys
 import json
 from dotenv import load_dotenv
 from openai import OpenAI
+from src.constants import ControllerType
 
 # Load .env file if exists
 load_dotenv()
@@ -15,6 +16,22 @@ else:
 
 CONFIG_PATH = os.path.join(_BASE_DIR, "config.json")
 _client = None
+
+GAMEPAD_BUTTONS = [
+    "A", "B", "X", "Y",
+    "DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT",
+    "LEFT_SHOULDER", "RIGHT_SHOULDER",
+    "LEFT_THUMB", "RIGHT_THUMB",
+    "BACK", "START"
+]
+
+DS4_BUTTONS = [
+    "CROSS", "CIRCLE", "SQUARE", "TRIANGLE",
+    "DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT",
+    "L1", "R1",
+    "L3", "R3",
+    "OPTIONS", "SHARE"
+]
 
 DEFAULTS = {
     "settings": {
@@ -33,30 +50,9 @@ DEFAULTS = {
     "controllers": [
         {
             "name": "Controller 1",
-            "bindings": {
-                "A": "command 1",
-                "B": "command 2",
-                "X": "command 3",
-                "Y": "command 4",
-                "DPAD_UP": "command 5",
-                "DPAD_DOWN": "command 6",
-                "DPAD_LEFT": "command 7",
-                "DPAD_RIGHT": "command 8",
-                "LEFT_SHOULDER": "command 9",
-                "RIGHT_SHOULDER": "command 10",
-                "LEFT_THUMB": "command 11",
-                "RIGHT_THUMB": "command 12",
-                "BACK": "command 13",
-                "START": "command 14"
-            }
+            "type": ControllerType.X360.value,
+            "bindings": {k: f"command {i + 1}" for i, k in enumerate(GAMEPAD_BUTTONS)}
         }
-    ],
-    "available_buttons": [
-        "A", "B", "X", "Y",
-        "DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT",
-        "LEFT_SHOULDER", "RIGHT_SHOULDER",
-        "LEFT_THUMB", "RIGHT_THUMB",
-        "BACK", "START"
     ]
 }
 
@@ -155,15 +151,17 @@ def find_command_controller(command):
                 return (idx, button)
     return None
 
-def add_controller():
-    """Add a new controller. Returns new controller index or -1 if limit reached."""
+def add_controller(gamepad_type=ControllerType.X360):
+    """Add a new gamepad controller. Returns new controller index or -1 if limit reached."""
     config = load_config()
     controllers = config.get("controllers", [])
     if len(controllers) >= 3:
         return -1
     new_index = len(controllers)
+    t = gamepad_type.value if isinstance(gamepad_type, ControllerType) else gamepad_type
     controllers.append({
-        "name": f"Controller {new_index + 1}",
+        "name": f"Controller {len(controllers) + 1}",
+        "type": t,
         "bindings": {}
     })
     config["controllers"] = controllers
@@ -171,10 +169,10 @@ def add_controller():
     return new_index
 
 def remove_controller(controller_index):
-    """Remove a controller by index. Returns True if successful."""
+    """Remove a controller by index."""
     config = load_config()
     controllers = config.get("controllers", [])
-    if len(controllers) <= 1 or controller_index < 0 or controller_index >= len(controllers):
+    if controller_index < 0 or controller_index >= len(controllers):
         return False
     controllers.pop(controller_index)
     config["controllers"] = controllers
@@ -206,9 +204,12 @@ def remove_binding(controller_index, button_key):
             return True
     return False
 
-def get_available_buttons():
-    """Get list of available gamepad buttons."""
-    return load_config().get("available_buttons", [])
+def get_available_buttons(controller_type=ControllerType.X360):
+    """Get list of available buttons for the given controller type."""
+    t = ControllerType(controller_type) if not isinstance(controller_type, ControllerType) else controller_type
+    if t == ControllerType.DS4:
+        return DS4_BUTTONS
+    return GAMEPAD_BUTTONS
 
 def get_theme():
     config = load_config()

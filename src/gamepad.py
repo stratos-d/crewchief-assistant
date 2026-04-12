@@ -1,6 +1,7 @@
 import vgamepad as vg
 import time
 from src.config_manager import get_controllers, find_command_controller
+from src.constants import ControllerType
 
 BUTTON_MAP = {
     # Face buttons
@@ -24,16 +25,46 @@ BUTTON_MAP = {
     "START": vg.XUSB_BUTTON.XUSB_GAMEPAD_START
 }
 
+DS4_BUTTON_MAP = {
+    "CROSS":    vg.DS4_BUTTONS.DS4_BUTTON_CROSS,
+    "CIRCLE":   vg.DS4_BUTTONS.DS4_BUTTON_CIRCLE,
+    "SQUARE":   vg.DS4_BUTTONS.DS4_BUTTON_SQUARE,
+    "TRIANGLE": vg.DS4_BUTTONS.DS4_BUTTON_TRIANGLE,
+    "L1":       vg.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT,
+    "R1":       vg.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT,
+    "L3":       vg.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT,
+    "R3":       vg.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT,
+    "OPTIONS":  vg.DS4_BUTTONS.DS4_BUTTON_OPTIONS,
+    "SHARE":    vg.DS4_BUTTONS.DS4_BUTTON_SHARE,
+}
+
+DS4_DPAD_MAP = {
+    "DPAD_UP":    vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH,
+    "DPAD_DOWN":  vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTH,
+    "DPAD_LEFT":  vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST,
+    "DPAD_RIGHT": vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST,
+}
+
 # Multiple gamepad instances (one per controller)
 _gamepads = {}
+
+def _get_ctrl_type(controller_index):
+    """Resolve ControllerType for a given index."""
+    controllers = get_controllers()
+    raw = controllers[controller_index].get("type", ControllerType.X360) if controller_index < len(controllers) else ControllerType.X360
+    return ControllerType(raw)
 
 def get_gamepad(controller_index=0):
     """Get or create a gamepad instance for a specific controller index."""
     global _gamepads
     if controller_index not in _gamepads:
-        print(f"Initializing virtual controller {controller_index + 1}...")
+        ctrl_type = _get_ctrl_type(controller_index)
+        print(f"Initializing virtual controller {controller_index + 1} ({ctrl_type.label})...")
         try:
-            _gamepads[controller_index] = vg.VX360Gamepad()
+            if ctrl_type == ControllerType.DS4:
+                _gamepads[controller_index] = vg.VDS4Gamepad()
+            else:
+                _gamepads[controller_index] = vg.VX360Gamepad()
         except Exception as e:
             raise RuntimeError(
                 "Failed to create virtual controller. "
@@ -44,12 +75,19 @@ def get_gamepad(controller_index=0):
     return _gamepads[controller_index]
 
 def init_all_gamepads():
-    """Initialize all gamepads based on config."""
+    """Initialize virtual gamepads for gamepad-type controllers only."""
     controllers = get_controllers()
+    gamepad_indices = [
+        i for i, c in enumerate(controllers)
+        if ControllerType(c.get("type", ControllerType.X360)).is_virtual
+    ]
+    if not gamepad_indices:
+        print("No virtual gamepad controllers configured.")
+        return
     try:
-        for i in range(len(controllers)):
+        for i in gamepad_indices:
             get_gamepad(i)
-        print(f"Initialized {len(controllers)} virtual controller(s).")
+        print(f"Initialized {len(gamepad_indices)} virtual controller(s).")
     except RuntimeError as e:
         print(f"ERROR: {e}")
 
@@ -79,34 +117,43 @@ def release_gamepad(controller_index):
     _gamepads = new_gamepads
 
 def trigger_action(command_name):
-    """Trigger gamepad button for a command on the correct controller."""
+    """Trigger button for a command on a virtual gamepad controller."""
     result = find_command_controller(command_name)
     if not result:
         return
 
     controller_index, button_key = result
-    if button_key not in BUTTON_MAP:
-        return
-
-    button_id = BUTTON_MAP[button_key]
-    pad = get_gamepad(controller_index)
-
-    pad.press_button(button=button_id)
-    pad.update()
-    time.sleep(0.1)
-    pad.release_button(button=button_id)
-    pad.update()
+    ctrl_type = _get_ctrl_type(controller_index)
+    _press_gamepad_button(controller_index, ctrl_type, button_key)
 
 def trigger_button(controller_index, button_key):
     """Directly trigger a button on a specific controller (for manual testing)."""
-    if button_key not in BUTTON_MAP:
-        return
+    ctrl_type = _get_ctrl_type(controller_index)
+    _press_gamepad_button(controller_index, ctrl_type, button_key)
 
-    button_id = BUTTON_MAP[button_key]
+def _press_gamepad_button(controller_index, ctrl_type, button_key):
+    """Internal: press and release a button on an x360 or ds4 virtual gamepad."""
     pad = get_gamepad(controller_index)
 
-    pad.press_button(button=button_id)
-    pad.update()
-    time.sleep(0.1)
-    pad.release_button(button=button_id)
-    pad.update()
+    if ctrl_type == ControllerType.DS4:
+        if button_key in DS4_DPAD_MAP:
+            pad.directional_pad(direction=DS4_DPAD_MAP[button_key])
+            pad.update()
+            time.sleep(0.1)
+            pad.directional_pad(direction=vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE)
+            pad.update()
+        elif button_key in DS4_BUTTON_MAP:
+            pad.press_button(button=DS4_BUTTON_MAP[button_key])
+            pad.update()
+            time.sleep(0.1)
+            pad.release_button(button=DS4_BUTTON_MAP[button_key])
+            pad.update()
+    else:
+        if button_key not in BUTTON_MAP:
+            return
+        button_id = BUTTON_MAP[button_key]
+        pad.press_button(button=button_id)
+        pad.update()
+        time.sleep(0.1)
+        pad.release_button(button=button_id)
+        pad.update()
