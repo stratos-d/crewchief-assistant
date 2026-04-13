@@ -76,6 +76,10 @@ def extract_guids_by_type(devices):
             if name_pattern in name or (type_id is not None and dtype == type_id):
                 result[ctrl_type].append(device["guid"])
                 break
+    # Sort by ViGEm serial embedded in GUID (4th segment, e.g. "8001")
+    # to match the app's sequential controller creation order.
+    for t in result:
+        result[t].sort(key=lambda g: g.split("-")[3])
     return result
 
 
