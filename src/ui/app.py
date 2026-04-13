@@ -4,7 +4,7 @@ import threading
 import sys
 
 from src.config_manager import get_setting, get_theme, get_api_key
-from src.gamepad import trigger_action, init_all_gamepads
+from src.gamepad import trigger_action, init_vjoy
 from src.ui.widgets import TerminalRedirector
 from src.ui.engine import VoiceEngine
 from src.ui.panels.control_panel import ControlPanelMixin
@@ -163,7 +163,7 @@ class CrewChiefGUI(ControlPanelMixin, SettingsPanelMixin, ControllersPanel):
 
     def _run_startup(self):
         """Run startup tasks in background."""
-        init_all_gamepads()
+        init_vjoy()
         self.root.after(0, self._finish_startup)
 
     def _finish_startup(self):

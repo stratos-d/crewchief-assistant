@@ -1,5 +1,4 @@
 import tkinter as tk
-from src.constants import ControllerType
 
 
 class ApiKeyModal:
@@ -129,7 +128,7 @@ class RenameCommandModal:
 
         tk.Label(
             frame,
-            text="Use lowercase (e.g., fuel status)",
+            text="(e.g., fuel status)",
             font=self.fonts["sm"],
             bg=self.colors["bg_color"],
             fg=self.colors["text_dim"]
@@ -210,51 +209,3 @@ class RenameCommandModal:
         self.on_save(self.current_name, new_name, self.button_key)
         self.modal.destroy()
 
-
-class ControllerTypeModal:
-    """Modal dialog for selecting a new controller type (X360 or DS4)."""
-
-    TYPES = [("Xbox 360", ControllerType.X360), ("DualShock 4", ControllerType.DS4)]
-
-    def __init__(self, parent, fonts, colors):
-        self.result = None
-        dialog = tk.Toplevel(parent)
-        dialog.title("Add Controller")
-        dialog.configure(bg=colors["card_bg"])
-        dialog.resizable(False, False)
-        dialog.grab_set()
-
-        tk.Label(
-            dialog,
-            text="Select controller type:",
-            font=fonts["sm"],
-            bg=colors["card_bg"],
-            fg=colors["text_main"],
-        ).pack(padx=20, pady=(15, 8))
-
-        btn_frame = tk.Frame(dialog, bg=colors["card_bg"])
-        btn_frame.pack(padx=20, pady=(0, 15))
-
-        def pick(t):
-            self.result = t
-            dialog.destroy()
-
-        for label, t in self.TYPES:
-            tk.Button(
-                btn_frame,
-                text=label,
-                font=fonts["sm"],
-                bg=colors["btn_bg"],
-                fg=colors["text_main"],
-                relief=tk.FLAT,
-                width=12,
-                pady=4,
-                cursor="hand2",
-                command=lambda t=t: pick(t)
-            ).pack(side=tk.LEFT, padx=4)
-
-        dialog.update_idletasks()
-        x = parent.winfo_x() + (parent.winfo_width() - dialog.winfo_width()) // 2
-        y = parent.winfo_y() + (parent.winfo_height() - dialog.winfo_height()) // 2
-        dialog.geometry(f"+{x}+{y}")
-        parent.wait_window(dialog)

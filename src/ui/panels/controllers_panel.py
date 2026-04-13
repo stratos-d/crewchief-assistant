@@ -2,13 +2,11 @@ import os
 import tkinter as tk
 
 from src.config_manager import (
-    get_controllers, get_all_commands,
-    add_controller, remove_controller, rename_binding,
-    get_available_buttons, load_config, save_config, get_setting, set_setting
+    get_controllers, get_all_commands, rename_binding, _parse_binding,
+    load_config, save_config, get_setting, set_setting
 )
-from src.gamepad import trigger_button, get_gamepad, release_gamepad
-from src.constants import ControllerType
-from src.ui.modals import RenameCommandModal, ControllerTypeModal
+from src.gamepad import trigger_button
+from src.ui.modals import RenameCommandModal
 
 
 class ControllersPanel:
@@ -44,21 +42,6 @@ class ControllersPanel:
         )
         self.sync_btn.pack(side=tk.RIGHT)
 
-        self.add_ctrl_btn = tk.Button(
-            header_frame,
-            text="ADD CONTROLLER",
-            font=self.fonts["sm"],
-            bg=self.theme["btn_bg"],
-            fg=self.theme["text_main"],
-            activebackground=self.theme["ready_green"],
-            activeforeground=self.theme["bg_color"],
-            relief=tk.FLAT,
-            cursor="hand2",
-            padx=10,
-            command=self._add_new_controller
-        )
-        self.add_ctrl_btn.pack(side=tk.RIGHT, padx=(0, 6))
-
         self.controllers_frame = tk.Frame(self.binder_card, bg=self.theme["card_bg"])
         self.controllers_frame.pack(fill=tk.X)
 
@@ -71,12 +54,6 @@ class ControllersPanel:
         for idx, controller in enumerate(controllers):
             self._build_controller_section(idx, controller, len(controllers))
 
-        gamepad_count = sum(1 for c in controllers if ControllerType(c.get("type", ControllerType.X360)).is_virtual)
-        if gamepad_count >= 3:
-            self.add_ctrl_btn.pack_forget()
-        else:
-            self.add_ctrl_btn.pack(side=tk.RIGHT, padx=(0, 6))
-
     def _build_controller_section(self, idx, controller, total_controllers):
         """Build UI section for a single controller."""
         if idx > 0:
@@ -88,9 +65,6 @@ class ControllersPanel:
         header = tk.Frame(ctrl_frame, bg=self.theme["card_bg"])
         header.pack(fill=tk.X, pady=(0, 6))
 
-        ctrl_type = controller.get("type", ControllerType.X360.value)
-        ctrl_type_enum = ControllerType(ctrl_type)
-
         tk.Label(
             header,
             text=controller.get("name", f"Controller {idx + 1}").upper(),
@@ -101,29 +75,11 @@ class ControllersPanel:
 
         tk.Label(
             header,
-            text=ctrl_type_enum.label,
+            text="vJoy",
             font=("Segoe UI", 7),
             bg=self.theme["card_bg"],
             fg=self.theme["text_dim"]
         ).pack(side=tk.LEFT, padx=(6, 0))
-
-        btn_frame = tk.Frame(header, bg=self.theme["card_bg"])
-        btn_frame.pack(side=tk.RIGHT)
-
-        if ctrl_type_enum.is_virtual:
-            tk.Button(
-                btn_frame,
-                text="REMOVE",
-                font=("Segoe UI", 8),
-                bg=self.theme["card_bg"],
-                fg=self.theme["stop_red"],
-                activebackground=self.theme["stop_red"],
-                activeforeground=self.theme["text_main"],
-                relief=tk.FLAT,
-                bd=0,
-                cursor="hand2",
-                command=lambda i=idx: self._remove_controller(i)
-            ).pack(side=tk.LEFT, padx=(0, 8))
 
         btn_grid = tk.Frame(ctrl_frame, bg=self.theme["card_bg"])
         btn_grid.pack(fill=tk.X)
@@ -133,29 +89,40 @@ class ControllersPanel:
             btn_grid.grid_columnconfigure(col, weight=1)
 
         bindings = controller.get("bindings", {})
-        row, col, prev_group = 0, 0, None
-        for button_key, command in bindings.items():
-            group = self._get_command_group(command)
-            if prev_group is not None and group != prev_group and col == 0:
-                spacer = tk.Frame(btn_grid, bg=self.theme["card_bg"], height=6)
-                spacer.grid(row=row, column=0, columnspan=num_cols, sticky=tk.EW)
-                row += 1
-            prev_group = group
+        row, col = 0, 0
+        for button_key, raw_value in bindings.items():
+            b = _parse_binding(raw_value)
+            command = b["command"]
+            enabled = b["enabled"] and bool(command)
+
+            if enabled:
+                label = command.replace("_", " ").capitalize()
+                bg = self.theme["bg_color"]
+                fg = self.theme["text_dim"]
+                active_bg = self.theme["accent_color"]
+                active_fg = self.theme["bg_color"]
+            else:
+                label = f"Button {button_key}"
+                bg = self.theme["bg_color"]
+                fg = self.theme["text_dim"]
+                active_bg = self.theme["bg_color"]
+                active_fg = self.theme["text_dim"]
 
             btn = tk.Button(
                 btn_grid,
-                text=command.replace("_", " ").capitalize(),
+                text=label,
                 font=self.fonts["cmd"],
                 relief=tk.FLAT,
-                bg=self.theme["bg_color"],
-                fg=self.theme["text_dim"],
-                activebackground=self.theme["accent_color"],
-                activeforeground=self.theme["bg_color"],
+                bg=bg,
+                fg=fg,
+                activebackground=active_bg,
+                activeforeground=active_fg,
                 pady=5,
-                command=lambda i=idx, c=command: self._manual_trigger_controller(i, c)
+                cursor="hand2",
+                command=(lambda i=idx, c=command: self._manual_trigger_controller(i, c)) if enabled else lambda: None
             )
             btn.grid(row=row, column=col, sticky=tk.EW, padx=1, pady=1)
-            btn.bind("<Button-3>", lambda e, i=idx, b=button_key, c=command: self._open_rename_modal(i, b, c))
+            btn.bind("<Button-3>", lambda e, i=idx, bk=button_key, c=command: self._open_rename_modal(i, bk, c))
 
             col += 1
             if col >= num_cols:
@@ -178,37 +145,6 @@ class ControllersPanel:
         if any(cmd.startswith(p) for p in ["toggle", "set"]):
             return "toggle"
         return "other"
-
-    def _add_new_controller(self):
-        """Add a new gamepad controller with default bindings."""
-        import threading
-        controllers = get_controllers()
-        gamepad_count = sum(1 for c in controllers if ControllerType(c.get("type", ControllerType.X360)).is_virtual)
-        if gamepad_count >= 3:
-            print("Maximum 3 gamepad controllers allowed.")
-            return
-
-        modal = ControllerTypeModal(self.root, self.fonts, self.theme)
-        if not modal.result:
-            return
-        gamepad_type = modal.result
-
-        new_idx = add_controller(gamepad_type)
-        if new_idx >= 0:
-            buttons = get_available_buttons(gamepad_type)
-            for i, btn_key in enumerate(buttons):
-                rename_binding(new_idx, btn_key, f"command {gamepad_count * len(buttons) + i + 1}")
-
-            threading.Thread(target=lambda: get_gamepad(new_idx), daemon=True).start()
-            print(f"Added Controller {new_idx + 1}")
-            self._load_binding_buttons()
-
-    def _remove_controller(self, controller_index):
-        """Remove a specific controller."""
-        if remove_controller(controller_index):
-            release_gamepad(controller_index)
-            print(f"Removed Controller {controller_index + 1}")
-            self._load_binding_buttons()
 
     def _open_rename_modal(self, controller_index, button_key, command):
         """Open modal to rename a command."""
@@ -286,7 +222,7 @@ class ControllersPanel:
                 print(f"Manual trigger: command '{command}' not found in bindings")
                 return
             idx, button_key = result
-            print(f"Manual trigger: {command} → {button_key} (Controller {idx + 1})")
+            print(f"Manual trigger: {command} → Button {button_key}")
             trigger_button(idx, button_key)
         except Exception:
             traceback.print_exc()

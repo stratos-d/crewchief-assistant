@@ -2,52 +2,15 @@ import os
 import json
 import shutil
 from datetime import datetime
-from src.constants import ControllerType
+from src.constants import MAX_BUTTONS
 
-# Hardware schema: button order for sequential assignment (X360)
-BUTTON_SCHEMA_X360 = [
-    {"id": "A",              "buttonIndex": 0, "usePovData": False, "povValue": 0},
-    {"id": "B",              "buttonIndex": 1, "usePovData": False, "povValue": 0},
-    {"id": "X",              "buttonIndex": 2, "usePovData": False, "povValue": 0},
-    {"id": "Y",              "buttonIndex": 3, "usePovData": False, "povValue": 0},
-    {"id": "LEFT_SHOULDER",  "buttonIndex": 4, "usePovData": False, "povValue": 0},
-    {"id": "RIGHT_SHOULDER", "buttonIndex": 5, "usePovData": False, "povValue": 0},
-    {"id": "BACK",           "buttonIndex": 6, "usePovData": False, "povValue": 0},
-    {"id": "START",          "buttonIndex": 7, "usePovData": False, "povValue": 0},
-    {"id": "LEFT_THUMB",     "buttonIndex": 8, "usePovData": False, "povValue": 0},
-    {"id": "RIGHT_THUMB",    "buttonIndex": 9, "usePovData": False, "povValue": 0},
-    {"id": "DPAD_UP",        "buttonIndex": 0, "usePovData": True,  "povValue": 0},
-    {"id": "DPAD_RIGHT",     "buttonIndex": 0, "usePovData": True,  "povValue": 9000},
-    {"id": "DPAD_DOWN",      "buttonIndex": 0, "usePovData": True,  "povValue": 18000},
-    {"id": "DPAD_LEFT",      "buttonIndex": 0, "usePovData": True,  "povValue": 27000},
+# vJoy button schema: 64 buttons, 0-indexed buttonIndex, no POV data
+BUTTON_SCHEMA_VJOY = [
+    {"id": str(i), "buttonIndex": i - 1, "usePovData": False, "povValue": 0}
+    for i in range(1, MAX_BUTTONS + 1)
 ]
 
-# DS4 button schema — DirectInput indices (L2=6, R2=7 occupy slots between R1 and SHARE)
-BUTTON_SCHEMA_DS4 = [
-    {"id": "CROSS",    "buttonIndex": 1,  "usePovData": False, "povValue": 0},
-    {"id": "CIRCLE",   "buttonIndex": 2,  "usePovData": False, "povValue": 0},
-    {"id": "SQUARE",   "buttonIndex": 0,  "usePovData": False, "povValue": 0},
-    {"id": "TRIANGLE", "buttonIndex": 3,  "usePovData": False, "povValue": 0},
-    {"id": "L1",       "buttonIndex": 4,  "usePovData": False, "povValue": 0},
-    {"id": "R1",       "buttonIndex": 5,  "usePovData": False, "povValue": 0},
-    {"id": "SHARE",    "buttonIndex": 8,  "usePovData": False, "povValue": 0},
-    {"id": "OPTIONS",  "buttonIndex": 9,  "usePovData": False, "povValue": 0},
-    {"id": "L3",       "buttonIndex": 10, "usePovData": False, "povValue": 0},
-    {"id": "R3",       "buttonIndex": 11, "usePovData": False, "povValue": 0},
-    {"id": "DPAD_UP",  "buttonIndex": 0,  "usePovData": True,  "povValue": 0},
-    {"id": "DPAD_RIGHT","buttonIndex": 0, "usePovData": True,  "povValue": 9000},
-    {"id": "DPAD_DOWN","buttonIndex": 0,  "usePovData": True,  "povValue": 18000},
-    {"id": "DPAD_LEFT","buttonIndex": 0,  "usePovData": True,  "povValue": 27000},
-]
-
-BUTTON_SCHEMA_BY_TYPE = {
-    ControllerType.X360: BUTTON_SCHEMA_X360,
-    ControllerType.DS4: BUTTON_SCHEMA_DS4,
-}
-
-BUTTONS_PER_CONTROLLER = len(BUTTON_SCHEMA_X360)
-MAX_CONTROLLERS = 3
-MAX_ACTIONS = BUTTONS_PER_CONTROLLER * MAX_CONTROLLERS
+VJOY_DEVICE_NAME = "vJoy Device"
 
 
 def action_to_command(action):
@@ -55,32 +18,16 @@ def action_to_command(action):
     # Replace underscores with spaces, lowercase
     cmd = action.replace("_", " ").lower().strip()
     # Clean up common patterns
-    cmd = cmd.replace("'", "'")
+    cmd = cmd.replace("\u2019", "'")
     return cmd
 
 
-# Device identification: (name_substring, deviceType) — either match is sufficient
-DEVICE_PATTERNS = {
-    ControllerType.X360:     ("XBOX 360 For Windows", None),
-    ControllerType.DS4:      ("Wireless Controller",  24),
-}
-
-
-def extract_guids_by_type(devices):
-    """Return a dict mapping ControllerType -> list of GUIDs found in CrewChief devices."""
-    result = {t: [] for t in DEVICE_PATTERNS}
+def find_vjoy_guid(devices):
+    """Find the GUID of the first vJoy device in CrewChief's device list."""
     for device in devices:
-        name = device.get("deviceName", "")
-        dtype = device.get("deviceType")
-        for ctrl_type, (name_pattern, type_id) in DEVICE_PATTERNS.items():
-            if name_pattern in name or (type_id is not None and dtype == type_id):
-                result[ctrl_type].append(device["guid"])
-                break
-    # Sort by ViGEm serial embedded in GUID (4th segment, e.g. "8001")
-    # to match the app's sequential controller creation order.
-    for t in result:
-        result[t].sort(key=lambda g: g.split("-")[3])
-    return result
+        if VJOY_DEVICE_NAME in device.get("deviceName", ""):
+            return device["guid"]
+    return None
 
 
 def get_available_actions(button_assignments):
@@ -90,7 +37,7 @@ def get_available_actions(button_assignments):
 
 def sync_crewchief_config(crewchief_config_path, existing_controllers):
     """
-    Read CrewChief's config, map available actions to existing virtual controller buttons,
+    Read CrewChief's config, map available actions to the vJoy device buttons,
     and return the updated config + app bindings.
     
     Args:
@@ -122,51 +69,30 @@ def sync_crewchief_config(crewchief_config_path, existing_controllers):
     devices = cc_config.get("devices", [])
     button_assignments = cc_config.get("buttonAssignments", [])
 
-    # Extract virtual controller GUIDs grouped by type
-    guids_by_type = extract_guids_by_type(devices)
-    # Build a flat ordered list of GUIDs matching the gamepad controllers in the app
-    # (resolved below after gamepad_controllers is determined)
-
-    # Collect all syncable controllers (virtual gamepads only)
-    syncable_controllers = [c for c in existing_controllers if c.get("type") in BUTTON_SCHEMA_BY_TYPE]
-    if not syncable_controllers:
+    # Find vJoy device GUID
+    vjoy_guid = find_vjoy_guid(devices)
+    if not vjoy_guid:
         return {
             "success": False,
-            "message": "No controllers found to sync.",
+            "message": "No vJoy device found in CrewChief config. "
+                       "Make sure vJoy is installed and CrewChief has detected it.",
             "bindings": [],
             "action_count": 0,
             "truncated": False,
         }
 
-    # Build ordered GUID list matching each controller by type
-    type_counters = {t: 0 for t in DEVICE_PATTERNS}
-    guids = []
-    missing = []
-    for ctrl in syncable_controllers:
-        ctrl_type = ControllerType(ctrl.get("type", ControllerType.X360))
-        idx = type_counters[ctrl_type]
-        available = guids_by_type.get(ctrl_type, [])
-        if idx < len(available):
-            guids.append(available[idx])
-        else:
-            missing.append(ctrl_type.label)
-        type_counters[ctrl_type] += 1
-
-    if missing:
+    if not existing_controllers:
         return {
             "success": False,
-            "message": f"Missing controllers in CrewChief config: {', '.join(missing)}. "
-                       "Make sure the app is running and CrewChief has detected all controllers.",
+            "message": "No controller configured in the app.",
             "bindings": [],
             "action_count": 0,
             "truncated": False,
         }
 
-    max_controllers = min(len(syncable_controllers), MAX_CONTROLLERS)
-
-    # Get available actions (each controller has its own schema length)
+    # Get available actions
     available = get_available_actions(button_assignments)
-    total_slots = sum(len(BUTTON_SCHEMA_BY_TYPE[ControllerType(c.get("type", ControllerType.X360))]) for c in syncable_controllers)
+    total_slots = len(BUTTON_SCHEMA_VJOY)
     truncated = len(available) > total_slots
     actions_to_assign = available[:total_slots]
 
@@ -174,43 +100,31 @@ def sync_crewchief_config(crewchief_config_path, existing_controllers):
     backup_path = crewchief_config_path + f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     shutil.copy2(crewchief_config_path, backup_path)
 
-    # Build index: syncable controller position -> index in app_controllers
-    app_controllers = list(existing_controllers)
-    syncable_indices = [i for i, c in enumerate(app_controllers) if c.get("type") in BUTTON_SCHEMA_BY_TYPE]
-
-    # Pre-compute slot offsets per syncable controller
-    slot_offsets = []  # (start_slot, schema) for each syncable controller
-    offset = 0
-    for ctrl in syncable_controllers:
-        schema = BUTTON_SCHEMA_BY_TYPE[ControllerType(ctrl.get("type", ControllerType.X360))]
-        slot_offsets.append((offset, schema))
-        offset += len(schema)
+    app_controller = dict(existing_controllers[0])
+    existing_bindings = app_controller.get("bindings", {})
 
     for idx, assignment in enumerate(actions_to_assign):
-        # Find which syncable controller this slot belongs to
-        sync_ctrl_idx = next(
-            i for i, (start, schema) in enumerate(slot_offsets)
-            if start <= idx < start + len(schema)
-        )
-        button_idx = idx - slot_offsets[sync_ctrl_idx][0]
-        ctrl_schema = slot_offsets[sync_ctrl_idx][1]
-        btn = ctrl_schema[button_idx]
-        guid = guids[sync_ctrl_idx]
-        app_ctrl_idx = syncable_indices[sync_ctrl_idx]
+        btn = BUTTON_SCHEMA_VJOY[idx]
 
         # Update CrewChief assignment
-        assignment["deviceGuid"] = guid
+        assignment["deviceGuid"] = vjoy_guid
         assignment["buttonIndex"] = btn["buttonIndex"]
         assignment["usePovData"] = btn["usePovData"]
         assignment["povValue"] = btn["povValue"]
 
-        # Only update app binding if this button already exists in the controller
-        existing_bindings = app_controllers[app_ctrl_idx]["bindings"]
-        if btn["id"] in existing_bindings:
-            command_name = action_to_command(assignment["action"])
-            existing_bindings[btn["id"]] = command_name
+        # Update app binding
+        command_name = action_to_command(assignment["action"])
+        existing_bindings[btn["id"]] = {"command": command_name, "enabled": True}
 
-    # Clear assignments for actions beyond capacity (if any were previously assigned)
+    # Ensure unsynced buttons retain proper format
+    for key in list(existing_bindings.keys()):
+        val = existing_bindings[key]
+        if isinstance(val, str):
+            existing_bindings[key] = {"command": val, "enabled": bool(val)}
+
+    app_controller["bindings"] = existing_bindings
+
+    # Clear assignments for actions beyond capacity
     for assignment in available[total_slots:]:
         assignment["deviceGuid"] = ""
         assignment["buttonIndex"] = -1
@@ -223,11 +137,11 @@ def sync_crewchief_config(crewchief_config_path, existing_controllers):
 
     return {
         "success": True,
-        "message": f"Synced {len(actions_to_assign)} actions across {len(guids)} controller(s). "
+        "message": f"Synced {len(actions_to_assign)} actions to vJoy device. "
                    f"Backup saved to: {os.path.basename(backup_path)}"
                    + (f"\nWarning: {len(available) - total_slots} actions were truncated (max {total_slots})."
                       if truncated else ""),
-        "bindings": app_controllers,
+        "bindings": [app_controller],
         "action_count": len(actions_to_assign),
         "truncated": truncated,
     }

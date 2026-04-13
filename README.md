@@ -2,9 +2,7 @@
 
 LLM-powered voice assistant for [CrewChief](https://thecrewchief.org). Say what you need — fuel report, tire status, pit request — and the app triggers the corresponding CrewChief action for you. Uses OpenAI Whisper for speech recognition and GPT for intent mapping, so you can speak naturally instead of memorizing exact phrases.
 
-The app works by emulating virtual game controllers (**Xbox 360** or **DualShock 4**) via ViGEmBus. Each controller button is mapped to a CrewChief action. When you speak a command, the app presses the right button automatically. Virtual controllers are used instead of keyboard shortcuts so there are no conflicts with your game or sim keybinds.
-
-> **Tip:** If you race with a physical Xbox controller, the game may also react to the virtual X360 button presses. To avoid this, use **DS4** as your virtual controller type in the app (or vice versa) — pick whichever type you're **not** already using for driving.
+The app works by emulating a virtual joystick via the [vJoy](https://sourceforge.net/projects/vjoystick/) driver. The vJoy device exposes up to 64 buttons, each mapped to a CrewChief action. When you speak a command, the app presses the right button automatically. A virtual joystick is used instead of keyboard shortcuts so there are no conflicts with your game or sim keybinds.
 
 ## Why Not Just Use CrewChief's Built-in Voice Commands?
 
@@ -13,18 +11,26 @@ CrewChief has its own voice recognition, but it relies on Windows Speech Recogni
 ## Requirements
 
 - Python 3.11+
-- [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases) driver
+- [vJoy driver](https://sourceforge.net/projects/vjoystick/)
 - OpenAI API key
 
-## ViGEmBus Driver
+## vJoy Driver
 
-This app creates virtual Xbox 360 or DualShock 4 controllers to send button presses to your game. ViGEmBus is the driver that makes this possible — without it, the app can't create virtual gamepads.
+This app uses vJoy to create a virtual joystick that sends button presses to CrewChief. Without it, the app can't trigger any actions.
 
-If you install via `poetry install`, the ViGEmBus driver is installed automatically (you'll see an installer popup during setup). If you're using the pre-built `.exe`, you need to install it manually:
+### Installation
 
-1. Go to the [ViGEmBus releases page](https://github.com/nefarius/ViGEmBus/releases)
-2. Download the latest `ViGEmBus_Setup_x.x.x.exe`
-3. Run the installer and restart your PC if prompted
+1. Download the latest installer from [vJoy on SourceForge](https://sourceforge.net/projects/vjoystick/).
+2. Run the installer and restart your PC if prompted.
+
+### Configuring vJoy
+
+By default, vJoy creates Device 1 with only **8 buttons**. If you want more buttons to work (up to **64 buttons**), you need to expand the vJoy device configuration:
+
+1. Open the Windows Start Menu and search for **Configure vJoy**.
+2. Open the application. Make sure **Device 1** is selected at the top.
+3. In the **Buttons** section, change the number from `8` to `64` (or whatever maximum you need).
+4. Click **Apply**.
 
 ## Setup
 
@@ -41,37 +47,28 @@ You have two ways to set up your voice commands:
 
 ### Method 1: Manual Keybinds
 
-1. **Launch the Assistant app.** It initializes 1 virtual X360 controller by default.
+1. **Launch the Assistant app.** It initializes a single vJoy device.
 
-2. **Add controllers.** Click ADD CONTROLLER to add up to 3 total. You can choose between X360 and DS4 controller types.
+2. **Rename commands.** Right-click any button in the controller grid to assign a voice command (e.g., "fuel report", "tire status").
 
-3. **Rename commands.** Right-click any button in the controller grid to rename its voice command (e.g., "fuel report", "tire status").
-
-4. **Bind actions in CrewChief.** Click each button in the app to simulate the keypress, then map it to the corresponding action in CrewChief's UI.
-
-5. **Test.** Press START in the app, hold your Push-To-Talk key, and speak your commands.
+3. **Bind actions in CrewChief.** Click each button in the app to simulate the button press, then map it to the corresponding action in CrewChief's UI.
 
 ### Method 2: CrewChief Auto-Sync
 
-The sync tool automatically maps all available CrewChief actions to your virtual controllers. Follow these steps **in order**:
+The sync function automatically maps all available CrewChief keybinds to vJoy buttons.
 
-1. **Launch the Assistant app.** It initializes 1 virtual X360 controller by default.
+1. **Launch the Assistant app.** It initializes a single vJoy device.
 
-2. **Add controllers.** Click ADD CONTROLLER to add up to 3 total (X360 or DS4). The more controllers you add, the more actions you can bind.
+2. **Register the vJoy device in CrewChief.** Launch CrewChief and click *Scan for controllers* in the controller settings. This writes the vJoy device GUID to CrewChief's config file.
 
-3. **Register controllers in CrewChief.** Launch CrewChief and click *Scan for controllers* in the controller settings. This writes the virtual controller GUIDs to CrewChief's config file. Then close CrewChief.
+3. **Run the sync.** Back in the Assistant app, click SYNC WITH CREWCHIEF.
 
-4. **Run the sync.** Back in the Assistant app, click SYNC WITH CREWCHIEF.
-
-5. **Select the configuration file** when prompted.
+4. **Select the CrewChiefs keybind configuration file** when prompted.
    - Default path: `Documents\CrewChiefV4\Profiles\ControllerData\defaultSettings.json`
 
-6. **Sync completes.** The app will automatically:
-   - Back up the original CrewChief configuration.
-   - Map all available CrewChief actions to your virtual controllers.
-   - Update button bindings in the app to match.
+5. **Sync done.** The app will automatically map all available CrewChief actions to vJoy buttons.
 
-7. **Restart CrewChief.** The sync writes directly to CrewChief's config file. **You must restart CrewChief** for the new bindings to take effect.
+6. **Restart CrewChief.** The sync writes directly to CrewChief's config file. **You must restart CrewChief** for the new bindings to take effect.
 
 ### Voice Commands
 
@@ -90,7 +87,7 @@ Configure the application in the SETTINGS panel:
 
 - **OpenAI API Key** — Required for speech recognition and intent routing.
 - **Input Device** — Choose your microphone.
-- **Push to Talk Key** — Default: Scroll Lock.
+- **Push to Talk Key** — Default: Scroll Lock. Only keyboard keys are accepted (no mouse or controller buttons).
 - **Audio Feedback** — Plays a beep when voice recording starts/stops.
 - **Min. Confidence** — Minimum LLM confidence threshold to accept a command (0-100%).
 

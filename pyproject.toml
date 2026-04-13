@@ -1,7 +1,7 @@
 [project]
 name = "crewchief-assistant"
 version = "0.1.0"
-description = "A voice-controlled virtual gamepad assistant for sim racing. Uses OpenAI Whisper and GPT to transcribe speech and map natural language commands to virtual Xbox 360 controller inputs via ViGEmBus."
+description = "A voice-controlled virtual joystick assistant for sim racing. Uses OpenAI Whisper and GPT to transcribe speech and map natural language commands to vJoy virtual device inputs."
 authors = [
     {name = "Julius"}
 ]
@@ -13,7 +13,7 @@ dependencies = [
     "sounddevice (>=0.5.5,<0.6.0)",
     "scipy (>=1.17.1,<2.0.0)",
     "keyboard (>=0.13.5,<0.14.0)",
-    "vgamepad (>=0.1.0,<0.2.0)",
+    "pyvjoy (>=1.0.0,<2.0.0)",
     "python-dotenv (>=1.2.2,<2.0.0)",
     "pygame (>=2.6.0,<3.0.0)"
 ]
