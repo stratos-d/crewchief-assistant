@@ -5,23 +5,21 @@ block_cipher = None
 
 # Collect all data/binaries for problematic packages
 keyboard_datas, keyboard_binaries, keyboard_hiddenimports = collect_all('keyboard')
-vgamepad_datas, vgamepad_binaries, vgamepad_hiddenimports = collect_all('vgamepad')
+pyvjoy_datas, pyvjoy_binaries, pyvjoy_hiddenimports = collect_all('pyvjoy')
 src_hiddenimports = collect_submodules('src')
 
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=keyboard_binaries + vgamepad_binaries,
+    binaries=keyboard_binaries + pyvjoy_binaries,
     datas=[
         ('resources', 'resources'),
-    ] + keyboard_datas + vgamepad_datas,
+    ] + keyboard_datas + pyvjoy_datas,
     hiddenimports=src_hiddenimports + [
         'keyboard',
         'keyboard._winkeyboard',
         'keyboard._keyboard_event',
-        'vgamepad',
-        'vgamepad.win',
-        'vgamepad.win.vigem_client',
+        'pyvjoy',
         'sounddevice',
         'pygame',
         'pygame.mixer',
@@ -34,7 +32,7 @@ a = Analysis(
         'dotenv',
         'python-dotenv',
         'tkinter',
-    ] + keyboard_hiddenimports + vgamepad_hiddenimports,
+    ] + keyboard_hiddenimports + pyvjoy_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -10,7 +10,7 @@ CrewChief has its own voice recognition, but it relies on Windows Speech Recogni
 
 ## Requirements
 
-- Python 3.11+
+- Python >=3.13,<3.15
 - [vJoy driver](https://sourceforge.net/projects/vjoystick/)
 - OpenAI API key
 
