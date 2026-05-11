@@ -32,7 +32,7 @@ jobs:
         run: python -m poetry --version
 
       - name: Install dependencies
-        run: python -m poetry install --extras dev
+        run: python -m poetry install --extras dev --no-root
 
       - name: Build executable
         run: python -m poetry run pyinstaller CrewChiefAssistant.spec --clean
