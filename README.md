@@ -4,7 +4,7 @@ LLM-powered voice assistant for [CrewChief](https://thecrewchief.org). Say what 
 
 The app works by emulating a virtual joystick via the [vJoy](https://sourceforge.net/projects/vjoystick/) driver. The vJoy device exposes up to 64 buttons, each mapped to a CrewChief action. When you speak a command, the app presses the right button automatically. A virtual joystick is used instead of keyboard shortcuts so there are no conflicts with your game or sim keybinds.
 
-## Why Not Just Use CrewChief's Built-in Voice Commands?
+## Use Case
 
 CrewChief has its own voice recognition, but it relies on Windows Speech Recognition which requires exact phrases and often struggles with accuracy — especially with background noise or non-native accents. This app uses OpenAI's Whisper model, which is significantly more accurate and understands natural language. You don't need to memorize exact commands — just say what you mean and the LLM figures out the intent.
 
