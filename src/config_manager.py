@@ -8,13 +8,17 @@ from src.constants import MAX_BUTTONS, DEFAULT_BINDINGS_COUNT
 # Load .env file if exists
 load_dotenv()
 
-# Resolve paths relative to the executable/script location
-if getattr(sys, 'frozen', False):
-    _BASE_DIR = os.path.dirname(sys.executable)
-else:
-    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Resolve paths in the per-user application config directory
+def _get_config_dir():
+    if os.name == "nt":
+        base_dir = os.environ.get("APPDATA") or os.path.expanduser("~\\AppData\\Roaming")
+    elif sys.platform == "darwin":
+        base_dir = os.path.expanduser("~/Library/Application Support")
+    else:
+        base_dir = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    return os.path.join(base_dir, "CrewChief Assistant")
 
-CONFIG_PATH = os.path.join(_BASE_DIR, "config.json")
+CONFIG_PATH = os.path.join(_get_config_dir(), "config.json")
 _client = None
 
 VJOY_BUTTONS = [str(i) for i in range(1, MAX_BUTTONS + 1)]
@@ -81,6 +85,7 @@ def load_config():
     return config
 
 def save_config(config):
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=4)
 

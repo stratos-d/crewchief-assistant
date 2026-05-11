@@ -103,7 +103,13 @@ Output will be located at: `dist/CrewChiefAssistant.exe`
 
 ## Config
 
-On first run, `config.default.json` is copied to `config.json`. All user settings and bindings are saved there automatically.
+On first run, the app creates `config.json` in the current user's application config directory.
+
+Default location:
+
+- **Windows:** `%APPDATA%\CrewChief Assistant\config.json`
+
+All user settings and bindings are saved there automatically.
 
 ## Disclaimer
 
