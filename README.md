@@ -14,6 +14,12 @@ CrewChief has its own voice recognition, but it relies on Windows Speech Recogni
 - [vJoy driver](https://sourceforge.net/projects/vjoystick/)
 - OpenAI API key
 
+### API key storage
+
+CrewChief Assistant stores your OpenAI API key locally in the app configuration file.
+The key is currently stored as plain text, so anyone with access to your user files may be able to read it.
+Recommended to use a dedicated OpenAI API key with a low usage limit.
+
 ## vJoy Driver
 
 This app uses vJoy to create a virtual joystick that sends button presses to CrewChief. Without it, the app can't trigger any actions.
