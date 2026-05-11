@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkfont
 import threading
+import os
 import sys
 
 from src.config_manager import get_setting, get_theme, get_api_key
@@ -18,6 +19,7 @@ class CrewChiefGUI(ControlPanelMixin, SettingsPanelMixin, ControllersPanel):
     def __init__(self, root):
         self.root = root
         self.root.title("CrewChief Assistant")
+        self._set_window_icon()
         self.root.geometry("960x700")
         self.root.minsize(800, 500)
 
@@ -34,6 +36,12 @@ class CrewChiefGUI(ControlPanelMixin, SettingsPanelMixin, ControllersPanel):
         threading.Thread(target=self._run_startup, daemon=True).start()
 
     # --- Setup ---
+
+    def _set_window_icon(self):
+        base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        icon_path = os.path.join(base_path, "resources", "app.ico")
+        if os.path.exists(icon_path):
+            self.root.iconbitmap(icon_path)
 
     def _load_theme(self):
         """Load theme colors from config."""
