@@ -14,6 +14,11 @@ CrewChief has its own voice recognition, but it relies on Windows Speech Recogni
 - [vJoy driver](https://sourceforge.net/projects/vjoystick/)
 - OpenAI API key
 
+## How to use
+
+Download the compiled binary from [Releases](https://github.com/stratos-d/crewchief-assistant/releases)
+or build it yourself (see [Setup](#setup) and [Build](#build)).
+
 ### API key storage
 
 CrewChief Assistant stores your OpenAI API key locally in the app configuration file.
@@ -37,15 +42,6 @@ By default, vJoy creates Device 1 with only **8 buttons**. If you want more butt
 2. Open the application. Make sure **Device 1** is selected at the top.
 3. In the **Buttons** section, change the number from `8` to `64` (or whatever maximum you need).
 4. Click **Apply**.
-
-## Setup
-
-```bash
-pip install poetry
-poetry install
-```
-
-Set your API key by copying `.env.example` to `.env`, or configure it directly in the app's UI.
 
 ## Usage
 
@@ -96,6 +92,15 @@ Configure the application in the SETTINGS panel:
 - **Push to Talk Key** — Default: Scroll Lock. Only keyboard keys are accepted (no mouse or controller buttons).
 - **Audio Feedback** — Plays a beep when voice recording starts/stops.
 - **Min. Confidence** — Minimum LLM confidence threshold to accept a command (0-100%).
+
+## Setup
+
+```bash
+pip install poetry
+poetry install
+```
+
+Set your API key by copying `.env.example` to `.env`, or configure it directly in the app's UI.
 
 ## Build
 
