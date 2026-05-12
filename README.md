@@ -20,7 +20,7 @@ CrewChief Assistant stores your OpenAI API key locally in the app configuration 
 The key is currently stored as plain text, so anyone with access to your user files may be able to read it.
 Recommended to use a dedicated OpenAI API key with a low usage limit.
 
-## How to use
+## Installation
 
 Download the compiled binary from [Releases](https://github.com/stratos-d/crewchief-assistant/releases)
 or build it yourself (see [Setup](#setup) and [Build](#build)).
@@ -29,7 +29,7 @@ or build it yourself (see [Setup](#setup) and [Build](#build)).
 
 This app uses vJoy to create a virtual joystick that sends button presses to CrewChief. Without it, the app can't trigger any actions.
 
-### Installation
+### Installing vJoy
 
 1. Download the latest installer from [vJoy on SourceForge](https://sourceforge.net/projects/vjoystick/).
 2. Run the installer and restart your PC if prompted.
