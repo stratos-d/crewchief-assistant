@@ -43,7 +43,7 @@ GLYPH_CROSS = ""
 
 # Status label, label colour and lamp colour per engine state
 STATUS = {
-    "off": ("NOT LISTENING", FAINT, "#b9b2a0"),
+    "off": ("DISABLED", FAINT, "#b9b2a0"),
     "starting": ("STARTING", FAINT, "#b9b2a0"),
     "ready": ("READY", NAVY, GREEN),
     "recording": ("LISTENING", RED, RED),

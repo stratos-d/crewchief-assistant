@@ -31,7 +31,7 @@ class HomePage:
         self.detail_label = ctk.CTkLabel(text, text="", font=t.font(t.BODY, 13), text_color=t.MUTED, anchor="w",
                                          justify="left", wraplength=480)
         self.detail_label.pack(anchor="w")
-        self.button = t.primary_button(card, "Start listening", app.toggle_listening, width=160)
+        self.button = t.primary_button(card, "Enable", app.toggle_listening, width=160)
         self.button.pack(side="right", padx=18)
 
         grid = ctk.CTkFrame(self.frame, fg_color=t.CREAM)
@@ -63,7 +63,7 @@ class HomePage:
             self.detail_label.pack(anchor="w")
         else:
             self.detail_label.pack_forget()
-        self.button.configure(text="Stop listening" if running else "Start listening")
+        self.button.configure(text="Disable" if running else "Enable")
 
     def render_recent(self, results):
         for child in self.recent_box.winfo_children():
