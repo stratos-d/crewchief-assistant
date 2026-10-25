@@ -66,8 +66,8 @@ def trigger_action(command_name):
     return int(button_key)
 
 
-def trigger_button(controller_index, button_key):
-    """Directly trigger a button (for manual testing). controller_index is ignored (single device)."""
+def trigger_button(button_key):
+    """Directly trigger a button (for manual testing)."""
     _press_button(int(button_key))
 
 

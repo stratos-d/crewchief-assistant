@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 from src import credentials
-from src.constants import MAX_BUTTONS, DEFAULT_BINDINGS_COUNT
+from src.constants import MAX_BUTTONS
 
 # Load .env file if exists
 load_dotenv()
@@ -27,8 +27,6 @@ _client = None
 
 # The voice engine thread reads settings while the UI thread saves them
 _config_lock = threading.RLock()
-
-VJOY_BUTTONS = [str(i) for i in range(1, MAX_BUTTONS + 1)]
 
 DEFAULTS = {
     "settings": {
@@ -145,13 +143,6 @@ def get_controllers():
     """Get all controllers."""
     return load_config().get("controllers", [])
 
-def get_controller_bindings(controller_index):
-    """Get bindings for a specific controller."""
-    controllers = get_controllers()
-    if 0 <= controller_index < len(controllers):
-        return controllers[controller_index].get("bindings", {})
-    return {}
-
 def get_all_commands():
     """Get all assigned+enabled commands across all controllers (for uniqueness validation)."""
     commands = []
@@ -161,16 +152,6 @@ def get_all_commands():
             if b["command"] and b["enabled"]:
                 commands.append(b["command"])
     return commands
-
-def get_all_bindings():
-    """Get all assigned+enabled bindings as {command: (controller_index, button_key)} for routing."""
-    result = {}
-    for idx, controller in enumerate(get_controllers()):
-        for button, value in controller.get("bindings", {}).items():
-            b = _parse_binding(value)
-            if b["command"] and b["enabled"]:
-                result[b["command"]] = (idx, button)
-    return result
 
 def find_command_controller(command):
     """Find which controller and button has an enabled command. Returns (controller_index, button_key) or None."""
@@ -196,24 +177,6 @@ def rename_binding(controller_index, button_key, new_command):
         save_config(config)
         return True
     return False
-
-def remove_binding(controller_index, button_key):
-    """Remove a binding from a controller."""
-    config = load_config()
-    controllers = config.get("controllers", [])
-    if 0 <= controller_index < len(controllers):
-        bindings = controllers[controller_index].get("bindings", {})
-        if button_key in bindings:
-            del bindings[button_key]
-            controllers[controller_index]["bindings"] = bindings
-            config["controllers"] = controllers
-            save_config(config)
-            return True
-    return False
-
-def get_available_buttons():
-    """Get list of available vJoy buttons."""
-    return VJOY_BUTTONS
 
 def get_api_key():
     key = credentials.read_api_key() or get_setting("openai_api_key", "")

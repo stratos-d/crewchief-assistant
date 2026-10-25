@@ -94,7 +94,7 @@ Everything on the **Settings** page saves as soon as you change it:
 - **Push-to-talk key** — Default: Scroll Lock. Only keyboard keys are accepted (no mouse or controller buttons).
 - **Microphone** — Choose your input device.
 - **Minimum confidence** — Minimum LLM confidence to press a button (0-100%).
-- **Beeps** — Plays a sound when push-to-talk starts and stops.
+- **Beeps** — Plays a sound when push-to-talk starts and stops, and a falling double beep when a command didn't press a button, so you know to try again without looking.
 - **API key** — Required for speech recognition and intent routing. **Test** checks that OpenAI accepts it.
 - **Speech-to-text model** and **Command model** — The OpenAI models used for transcription and for picking the command.
 
@@ -131,6 +131,8 @@ The version bump comes from the pull request's labels:
 | `skip-release` | No release for this merge |
 
 You can still release by hand: push a `v*` tag, or run the **Build Windows exe** workflow from the Actions tab with a `release_tag`.
+
+Release builds show their version in the sidebar. On launch they ask GitHub's public releases page whether a newer version exists (nothing about you is sent) and show an **Update** button if so.
 
 ## Config
 

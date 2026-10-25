@@ -102,7 +102,7 @@ class SettingsPage:
         self.confidence_value.pack(side="left", padx=(10, 0))
 
     def _beeps_row(self, form):
-        self._label(form, 3, "Beeps", "Short sounds when push-to-talk starts and stops.")
+        self._label(form, 3, "Beeps", "Push-to-talk start and stop, and a double beep when no button was pressed.")
         self.beeps = ctk.BooleanVar(value=get_setting("audio.ptt_sound_enabled", True))
         ctk.CTkSwitch(form, text="", variable=self.beeps, command=self._on_beeps, progress_color=t.ORANGE,
                       button_color=t.NAVY, button_hover_color=t.NAVY_2, fg_color=t.LINE).grid(row=3, column=1, sticky="w")

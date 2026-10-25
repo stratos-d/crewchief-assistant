@@ -44,3 +44,6 @@ config.json
 
 # Environment (contains API key)
 .env
+
+# Tests
+.pytest_cache/
