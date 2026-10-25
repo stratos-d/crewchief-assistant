@@ -154,7 +154,7 @@ class CommandsPage:
     def _test(self, key):
         def press():
             try:
-                trigger_button(0, key)
+                trigger_button(key)
                 print(f"Test press: button {key}")
             except Exception as e:
                 print(f"ERROR: {friendly_error(e)}")

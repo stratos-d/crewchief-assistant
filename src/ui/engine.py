@@ -5,6 +5,7 @@ from src.stt import transcribe_audio
 from src.router import get_intent
 from src.gamepad import trigger_action
 from src.config_manager import get_setting, warm_up_connection
+from src.sounds import play_not_understood
 from src.ui.state import CommandResult
 
 
@@ -76,6 +77,7 @@ class VoiceEngine:
                     print(f"ERROR: {e}")
                     if mic is not None:
                         self.on_event("result", result=CommandResult(heard="", outcome="error", message=message))
+                        play_not_understood()
                 last_error = message
                 self._status(stop_event, "error", message)
                 # Back off so a persistent failure (bad PTT key, missing mic) doesn't spin
@@ -136,4 +138,6 @@ class VoiceEngine:
     def _report(self, result):
         if self._released_at is not None:
             result.seconds = time.perf_counter() - self._released_at
+        if result.outcome != "pressed":
+            play_not_understood()  # the driver can't look at the screen; no button was pressed, so try again
         self.on_event("result", result=result)

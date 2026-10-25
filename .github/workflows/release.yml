@@ -50,6 +50,12 @@ jobs:
           echo "Latest release: ${latest:-none}. Releasing v$major.$minor.$patch"
           echo "tag=v$major.$minor.$patch" >> "$GITHUB_OUTPUT"
 
+      - name: Stamp the version into the app
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: printf 'VERSION = "%s"\n' "$TAG" > src/version.py
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -60,6 +66,9 @@ jobs:
 
       - name: Install dependencies
         run: python -m poetry install --extras dev --no-root
+
+      - name: Run tests
+        run: python -m poetry run pytest -q
 
       - name: Build executable
         run: python -m poetry run pyinstaller CrewChiefAssistant.spec --clean

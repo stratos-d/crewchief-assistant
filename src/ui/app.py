@@ -2,6 +2,7 @@ import os
 import sys
 import threading
 import traceback
+import webbrowser
 from datetime import datetime
 from tkinter import filedialog, messagebox
 
@@ -13,6 +14,8 @@ from src.config_manager import (
     get_openai_client, preload_openai, migrate_api_key, _parse_binding
 )
 from src.gamepad import init_vjoy, release_vjoy
+from src.updates import RELEASES_PAGE, newer_release
+from src.version import VERSION
 from src.ui import theme as t
 from src.ui.engine import VoiceEngine, friendly_error
 from src.ui.state import AppState, EventQueue, LogWriter
@@ -90,7 +93,10 @@ class CrewChiefGUI:
         logo = ctk.CTkFrame(side, fg_color=t.NAVY, width=10)
         logo.pack(anchor="w", padx=16, pady=(20, 22))
         ctk.CTkLabel(logo, text="CREWCHIEF", font=t.font(t.HEAD, 20, "bold"), text_color="#ffffff", height=24).pack(anchor="w")
-        ctk.CTkLabel(logo, text="ASSISTANT", font=t.font(t.HEAD, 12), text_color=t.ORANGE, height=14).pack(anchor="w")
+        sub = ctk.CTkFrame(logo, fg_color=t.NAVY, width=10)
+        sub.pack(anchor="w")
+        ctk.CTkLabel(sub, text="ASSISTANT", font=t.font(t.HEAD, 12), text_color=t.ORANGE, height=14).pack(side="left")
+        ctk.CTkLabel(sub, text=f"  {VERSION}", font=t.font(t.HEAD, 11), text_color=t.SIDE_MUTED, height=14).pack(side="left")
 
         self.nav_items = {}
         for key, name, glyph in NAV:
@@ -108,6 +114,10 @@ class CrewChiefGUI:
                 widget.bind("<Button-1>", lambda e, k=key: self.show(k))
             self.nav_items[key] = (row, bar, icon, label, count)
 
+        self.update_button = ctk.CTkButton(side, text="", command=lambda: webbrowser.open(RELEASES_PAGE),
+                                           font=t.font(t.HEAD, 13, "bold"), fg_color=t.NAVY, hover_color=t.NAVY_2,
+                                           text_color=t.ORANGE, border_width=1, border_color=t.ORANGE,
+                                           corner_radius=t.RADIUS, height=30)  # shown only when a newer release exists
         mini = ctk.CTkFrame(side, fg_color=t.NAVY_2, corner_radius=t.RADIUS + 2)
         mini.pack(side="bottom", fill="x", padx=12, pady=14)
         top = ctk.CTkFrame(mini, fg_color=t.NAVY_2, width=10)
@@ -136,6 +146,9 @@ class CrewChiefGUI:
         vjoy = init_vjoy()
         self.events.post("vjoy", **vjoy)
         preload_openai()
+        latest = newer_release(VERSION)
+        if latest:
+            self.events.post("update", tag=latest)
 
     # --- Navigation ---
 
@@ -178,6 +191,11 @@ class CrewChiefGUI:
     def _on_vjoy(self, ok, buttons):
         self.state.vjoy = {"ok": ok, "buttons": buttons}
         self.refresh_setup()
+
+    def _on_update(self, tag):
+        self.update_button.configure(text=f"Update to {tag}")
+        self.update_button.pack(side="bottom", fill="x", padx=12)
+        print(f"Update available: {tag}")
 
     def _on_rebind(self, key):
         self.pages["settings"]._finish_rebind(key)

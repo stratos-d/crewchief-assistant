@@ -25,7 +25,6 @@ a = Analysis(
         'openai',
         'httpx',
         'dotenv',
-        'python-dotenv',
         'tkinter',
         'customtkinter',
         'darkdetect',
@@ -59,7 +58,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,  # UPX-packed exes trigger antivirus false positives, especially with a global keyboard hook
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,  # No console window (GUI app)
