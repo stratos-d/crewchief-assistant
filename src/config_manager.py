@@ -233,13 +233,3 @@ def get_openai_client():
             http_client=DefaultHttpxClient(limits=httpx.Limits(max_keepalive_connections=5, keepalive_expiry=60))
         )
     return _client
-
-def warm_up_connection():
-    """Open the HTTPS connection in the background while the driver is still talking."""
-    def warm():
-        try:
-            get_openai_client().models.retrieve(get_setting("models.router", "gpt-4o-mini"))
-        except Exception:
-            pass  # Only an optimization; the real request reports any problem
-
-    threading.Thread(target=warm, daemon=True).start()

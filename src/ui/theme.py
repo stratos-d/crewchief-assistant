@@ -1,5 +1,4 @@
 """Modern motorsport livery: palette, fonts and small widgets shared by every page."""
-import math
 import tkinter as tk
 import tkinter.font as tkfont
 
@@ -42,7 +41,7 @@ GLYPH_CHECK = ""
 GLYPH_WARN = ""
 GLYPH_CROSS = ""
 
-# Status label, label colour and gauge lamp colour per engine state
+# Status label, label colour and lamp colour per engine state
 STATUS = {
     "off": ("NOT LISTENING", FAINT, "#b9b2a0"),
     "starting": ("STARTING", FAINT, "#b9b2a0"),
@@ -128,19 +127,11 @@ def chip(parent, text, kind="ok", bg=CARD):
     return tk.Label(parent, text=f" {text} ", font=tk_font(BODY, 9), bg=colors[0], fg=colors[1], bd=0, padx=4, pady=1)
 
 
-def draw_gauge(canvas, lamp_color):
-    """Small tachometer: white face, tick marks, coloured lamp in the middle."""
+def draw_lamp(canvas, lamp_color):
+    """Status lamp: a solid dot in the status colour."""
     canvas.delete("all")
     size = int(canvas["width"])
-    c = size / 2
-    canvas.create_oval(px(4), px(4), size - px(4), size - px(4), fill="#ffffff", outline=NAVY, width=px(2))
-    for k in range(9):
-        a = math.radians(225 - k * 33.75)
-        r1, r2 = size * 0.31, size * 0.41
-        canvas.create_line(c + r1 * math.cos(a), c - r1 * math.sin(a), c + r2 * math.cos(a), c - r2 * math.sin(a),
-                           fill=NAVY, width=px(2))
-    r = size * 0.13
-    canvas.create_oval(c - r, c - r, c + r, c + r, fill=lamp_color, outline=NAVY, width=px(2))
+    canvas.create_oval(px(2), px(2), size - px(2), size - px(2), fill=lamp_color, outline="")
 
 
 def roundel(parent, text, bg=CARD, muted=False, size=30):

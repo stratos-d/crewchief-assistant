@@ -1,12 +1,16 @@
 import threading
 import time
-from src.audio import Microphone, record_command
+from src.audio import Microphone, SILENCE_LEVEL, record_command
 from src.stt import transcribe_audio
 from src.router import get_intent
 from src.gamepad import trigger_action
-from src.config_manager import get_setting, warm_up_connection
+from src.config_manager import get_setting
 from src.sounds import play_not_understood
 from src.ui.state import CommandResult
+
+# Nobody says more than this many words per second; a longer transcript is the model
+# returning its hint list for a clip with no speech in it
+MAX_WORDS_PER_SECOND = 5
 
 
 def friendly_error(error):
@@ -91,8 +95,6 @@ class VoiceEngine:
             mic.close()
 
     def _on_ptt_pressed(self, stop_event):
-        # Connect to OpenAI while the driver is still talking, so the upload starts on a warm connection
-        warm_up_connection()
         self._status(stop_event, "recording")
 
     def _on_ptt_released(self, stop_event):
@@ -101,7 +103,7 @@ class VoiceEngine:
 
     def _process_command(self, mic, ptt_key, stop_event):
         """Record one push-to-talk command and trigger the matching action."""
-        audio_buffer = record_command(
+        clip = record_command(
             mic,
             ptt_key,
             stop_event,
@@ -109,13 +111,16 @@ class VoiceEngine:
             on_stop=lambda: self._on_ptt_released(stop_event)
         )
 
-        if not audio_buffer or stop_event.is_set():
+        if not clip or stop_event.is_set():
+            return
+        if clip.peak < SILENCE_LEVEL:
+            self._report(CommandResult(heard="", outcome="no_speech"))
             return
 
-        text = transcribe_audio(audio_buffer)
+        text = transcribe_audio(clip.wav)
         if stop_event.is_set():
             return
-        if not text or not text.strip():
+        if not text or not text.strip() or len(text.split()) > 4 + MAX_WORDS_PER_SECOND * clip.seconds:
             self._report(CommandResult(heard="", outcome="no_speech"))
             return
 

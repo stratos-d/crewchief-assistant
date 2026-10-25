@@ -21,9 +21,9 @@ class HomePage:
 
         outer, card = t.card(self.frame)
         outer.pack(fill="x")
-        size = t.px(64)
-        self.gauge = tk.Canvas(card, width=size, height=size, bg=t.CARD, highlightthickness=0)
-        self.gauge.pack(side="left", padx=18, pady=16)
+        size = t.px(24)
+        self.lamp = tk.Canvas(card, width=size, height=size, bg=t.CARD, highlightthickness=0)
+        self.lamp.pack(side="left", padx=(22, 16), pady=36)
         text = ctk.CTkFrame(card, fg_color=t.CARD, width=10)
         text.pack(side="left", fill="x", expand=True)
         self.state_label = ctk.CTkLabel(text, text="", font=t.font(t.HEAD, 22, "bold"), height=28)
@@ -56,7 +56,7 @@ class HomePage:
         pass
 
     def render_status(self, label, color, lamp, detail, running):
-        t.draw_gauge(self.gauge, lamp)
+        t.draw_lamp(self.lamp, lamp)
         self.state_label.configure(text=label, text_color=color)
         self.detail_label.configure(text=detail)
         if detail:
