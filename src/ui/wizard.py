@@ -490,12 +490,12 @@ class SetupWizard:
             self._buttons(("Go to OpenAI key", lambda: self.go(2)))
             return "Try it", ""
         label, color, lamp = t.STATUS[self.app.state.status]
-        gauge = tk.Frame(self.body, bg=t.CARD)
-        gauge.pack(anchor="w", pady=(0, 14))
-        canvas = tk.Canvas(gauge, width=t.px(56), height=t.px(56), bg=t.CARD, highlightthickness=0)
-        t.draw_gauge(canvas, lamp)
-        canvas.pack(side="left", padx=(0, 14))
-        tk.Label(gauge, text=label, font=t.tk_font(t.HEAD, 18, "bold"), fg=color, bg=t.CARD).pack(side="left")
+        status = tk.Frame(self.body, bg=t.CARD)
+        status.pack(anchor="w", pady=(0, 14))
+        canvas = tk.Canvas(status, width=t.px(20), height=t.px(20), bg=t.CARD, highlightthickness=0)
+        t.draw_lamp(canvas, lamp)
+        canvas.pack(side="left", padx=(0, 12))
+        tk.Label(status, text=label, font=t.tk_font(t.HEAD, 18, "bold"), fg=color, bg=t.CARD).pack(side="left")
 
         new = self._new_results()
         if not new:

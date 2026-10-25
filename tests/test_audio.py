@@ -1,3 +1,4 @@
+import array
 import threading
 import time
 import wave
@@ -38,18 +39,25 @@ def test_sound_files_are_valid_wavs(path):
         assert w.getnframes() > 0
 
 
+def test_peak_level():
+    assert audio.peak_level(b"") == 0
+    assert audio.peak_level(array.array("h", [0, 100, -200]).tobytes()) == 200 / 32768
+    assert audio.peak_level(array.array("h", [-32768]).tobytes()) == 1.0
+
+
 @needs_mic
-def test_pre_roll_keeps_audio_from_before_the_press():
+def test_microphone_is_open_only_while_recording():
     mic = audio.Microphone()
     try:
-        time.sleep(0.6)
+        assert mic._stream is None
         mic.start_recording()
         time.sleep(0.5)
         pcm = mic.stop_recording()
+        assert mic._stream is None
     finally:
         mic.close()
     seconds = len(pcm) / 2 / audio.SAMPLE_RATE
-    assert 0.78 <= seconds <= 0.95  # 0.3 s pre-roll + 0.5 s held + delivery tail
+    assert 0.4 <= seconds <= 0.7  # 0.5 s held, minus device start-up, plus delivery tail
 
 
 @needs_mic
@@ -61,14 +69,17 @@ def test_record_command_follows_the_key(monkeypatch):
     pressed_at = {}
     mic = audio.Microphone()
     try:
-        buf = audio.record_command(mic, "f8", threading.Event(),
-                                   on_start=lambda: pressed_at.setdefault("t", time.perf_counter() - start))
+        clip = audio.record_command(mic, "f8", threading.Event(),
+                                    on_start=lambda: pressed_at.setdefault("t", time.perf_counter() - start))
         returned = time.perf_counter() - start
     finally:
         mic.close()
-    assert pressed_at["t"] - 0.3 <= 0.05
+    assert pressed_at["t"] - 0.3 <= 0.15
     assert returned - 1.3 <= 0.15
-    assert 1.2 <= wav_seconds(buf) <= 1.45
+    seconds = wav_seconds(clip.wav)
+    assert 0.85 <= seconds <= 1.2
+    assert clip.seconds == pytest.approx(seconds)
+    assert 0.0 <= clip.peak <= 1.0
 
 
 @needs_mic

@@ -1,19 +1,18 @@
 import sounddevice as sd
 import keyboard
 import array
-import collections
-import threading
 import wave
 import io
 import time
+from dataclasses import dataclass
 from src.config_manager import get_setting
 from src.sounds import play_ptt_on, play_ptt_off
 
 # Whisper works at 16 kHz, so recording 16-bit 16 kHz keeps uploads ~5x smaller than 44.1 kHz float
 SAMPLE_RATE = 16000
 BLOCK_FRAMES = SAMPLE_RATE // 50  # 20 ms per callback
-PRE_ROLL_BLOCKS = 15  # Keep 300 ms from before the PTT press, so the first word isn't clipped
 POLL_SECONDS = 0.01
+SILENCE_LEVEL = 0.03  # a clip whose peak stays below this is silence and isn't sent
 
 
 def get_input_devices():
@@ -44,38 +43,52 @@ def get_device_id():
 
 
 class Microphone:
-    """Input stream that stays open while the assistant runs, so recording starts instantly on PTT."""
+    """The input device, opened only while push-to-talk is held."""
 
     def __init__(self):
-        self._lock = threading.Lock()
-        self._pre_roll = collections.deque(maxlen=PRE_ROLL_BLOCKS)
-        self._recording = None
-        self._stream = sd.RawInputStream(
-            samplerate=SAMPLE_RATE, channels=1, dtype="int16", blocksize=BLOCK_FRAMES,
-            latency="low", device=get_device_id(), callback=self._on_audio
-        )
-        self._stream.start()
+        self._device = get_device_id()
+        # Checks the device without opening it, so a missing microphone is reported when listening starts
+        sd.check_input_settings(device=self._device, channels=1, dtype="int16", samplerate=SAMPLE_RATE)
+        self._chunks = []
+        self._stream = None
 
     def _on_audio(self, indata, frames, time_info, status):
-        with self._lock:
-            target = self._recording if self._recording is not None else self._pre_roll
-            target.append(bytes(indata))
+        self._chunks.append(bytes(indata))
 
     def start_recording(self):
-        with self._lock:
-            self._recording = list(self._pre_roll)
-            self._pre_roll.clear()
+        self._chunks = []
+        self._stream = sd.RawInputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16", blocksize=BLOCK_FRAMES,
+                                         latency="low", device=self._device, callback=self._on_audio)
+        self._stream.start()
 
     def stop_recording(self):
-        """Stop recording and return the captured 16-bit PCM bytes."""
+        """Close the device and return the captured 16-bit PCM bytes."""
+        stream, self._stream = self._stream, None
+        if stream is None:
+            return b""
         # Wait until audio captured right up to the release has been delivered
-        time.sleep(self._stream.latency + BLOCK_FRAMES / SAMPLE_RATE)
-        with self._lock:
-            chunks, self._recording = self._recording, None
-        return b"".join(chunks or [])
+        time.sleep(stream.latency + BLOCK_FRAMES / SAMPLE_RATE)
+        stream.stop()
+        stream.close()
+        return b"".join(self._chunks)
 
     def close(self):
-        self._stream.close()
+        if self._stream is not None:
+            self._stream.close()
+            self._stream = None
+
+
+@dataclass
+class Clip:
+    """One push-to-talk recording."""
+    wav: io.BytesIO
+    seconds: float
+    peak: float  # loudest sample, 0..1
+
+
+def peak_level(pcm):
+    """Loudest sample in 16-bit PCM, 0..1."""
+    return max(map(abs, array.array("h", pcm)), default=0) / 32768
 
 
 class LevelMeter:
@@ -88,8 +101,7 @@ class LevelMeter:
         self._stream.start()
 
     def _on_audio(self, indata, frames, time_info, status):
-        samples = array.array("h", bytes(indata))
-        self.level = max(map(abs, samples), default=0) / 32768
+        self.level = peak_level(bytes(indata))
 
     def close(self):
         self._stream.close()
@@ -109,7 +121,7 @@ def encode_wav(pcm):
 
 
 def record_command(mic, ptt_key, stop_event=None, on_start=None, on_stop=None):
-    """Records audio while PTT is held. Can be interrupted by stop_event."""
+    """Records audio while PTT is held and returns a Clip. Can be interrupted by stop_event."""
 
     # Wait for the user to press the key, or for the GUI to send a stop signal
     while True:
@@ -137,4 +149,6 @@ def record_command(mic, ptt_key, stop_event=None, on_start=None, on_stop=None):
     play_ptt_off()
     if on_stop: on_stop()
 
-    return encode_wav(pcm) if pcm else None
+    if not pcm:
+        return None
+    return Clip(wav=encode_wav(pcm), seconds=len(pcm) / 2 / SAMPLE_RATE, peak=peak_level(pcm))
