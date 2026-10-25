@@ -87,6 +87,12 @@ Once set up, click **Start listening**, hold your Push-to-Talk key (default: Scr
 
 Any variation works — the LLM understands the intent, not just exact phrases. **Recent commands** on Home shows what was heard, which command it matched and which button was pressed; the **Activity** page has the full log.
 
+Button numbers match CrewChief's controller list (CrewChief counts from 0). Under each command, the **Commands** page shows the CrewChief action on that button, read from CrewChief's own settings, so you can rename a command freely and still see what it does.
+
+### OpenAI usage
+
+The **Usage** page shows commands, tokens and estimated cost for this month, all time and month by month. Your OpenAI billing page has the exact amount. A command costs well under a tenth of a cent.
+
 ### Settings
 
 Everything on the **Settings** page saves as soon as you change it:
@@ -116,23 +122,6 @@ poetry run pyinstaller CrewChiefAssistant.spec --clean
 ```
 
 Output will be located at: `dist/CrewChiefAssistant.exe`
-
-## Releases
-
-Releases are published automatically. When a pull request is merged into `main`, the **Release on merge** workflow builds the exe, tags the merge commit with the next version and publishes a GitHub Release with `CrewChiefAssistant.exe` attached and notes listing the merged pull requests.
-
-The version bump comes from the pull request's labels:
-
-| Label | Example |
-|---|---|
-| *(none)* | `v0.5.1` → `v0.5.2` |
-| `release:minor` | `v0.5.1` → `v0.6.0` |
-| `release:major` | `v0.5.1` → `v1.0.0` |
-| `skip-release` | No release for this merge |
-
-You can still release by hand: push a `v*` tag, or run the **Build Windows exe** workflow from the Actions tab with a `release_tag`.
-
-Release builds show their version in the sidebar. On launch they ask GitHub's public releases page whether a newer version exists (nothing about you is sent) and show an **Update** button if so.
 
 ## Config
 

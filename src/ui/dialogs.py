@@ -6,13 +6,13 @@ from src.ui import theme as t
 class RenameDialog:
     """Name (or clear) the voice command on one vJoy button."""
 
-    def __init__(self, app, button_key, current_name, existing_names, on_save):
+    def __init__(self, app, button_number, cc_action, current_name, existing_names, on_save):
         self.current_name = current_name
         self.existing_names = existing_names
         self.on_save = on_save
 
         self.top = ctk.CTkToplevel(app.root, fg_color=t.CREAM)
-        self.top.title(f"Button {button_key}")
+        self.top.title(f"Button {button_number}")
         self.top.resizable(False, False)
         self.top.transient(app.root)
         if getattr(app, "icon_path", None):
@@ -22,10 +22,10 @@ class RenameDialog:
         frame = ctk.CTkFrame(self.top, fg_color=t.CREAM)
         frame.pack(fill="both", expand=True, padx=22, pady=18)
         verb = "Rename" if current_name else "Assign"
-        ctk.CTkLabel(frame, text=f"{verb} button {button_key}".upper(), font=t.font(t.HEAD, 17, "bold"),
+        ctk.CTkLabel(frame, text=f"{verb} button {button_number}".upper(), font=t.font(t.HEAD, 17, "bold"),
                      text_color=t.TEXT).pack(anchor="w")
-        ctk.CTkLabel(frame, text="What you'll say for this CrewChief action, e.g. “fuel status”.",
-                     font=t.font(t.BODY, 13), text_color=t.MUTED).pack(anchor="w", pady=(0, 10))
+        ctk.CTkLabel(frame, text=f"CrewChief: {cc_action}" if cc_action else "", font=t.font(t.BODY, 13),
+                     text_color=t.MUTED, wraplength=360, justify="left").pack(anchor="w", pady=(0, 10))
         self.entry = ctk.CTkEntry(frame, width=360, height=34, fg_color=t.CARD, border_color=t.NAVY, border_width=1,
                                   corner_radius=t.RADIUS, text_color=t.TEXT, font=t.font(t.BODY, 14))
         self.entry.pack(fill="x")
@@ -60,10 +60,10 @@ class RenameDialog:
     def _save(self):
         new_name = self.entry.get().strip().lower()
         if not new_name:
-            self.error.configure(text="Type a command, or use Remove to clear this button.")
+            self.error.configure(text="Type a command.")
             return
         if new_name != self.current_name and new_name in self.existing_names:
-            self.error.configure(text=f"“{new_name}” is already used by another button.")
+            self.error.configure(text=f"“{new_name}” is already in use.")
             return
         self.top.destroy()
         if new_name != self.current_name:

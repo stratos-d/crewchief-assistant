@@ -8,6 +8,7 @@ from tkinter import filedialog
 
 from src.audio import LevelMeter, get_input_devices
 from src.config_manager import get_setting, set_setting, get_api_key, save_api_key
+from src.constants import crewchief_number
 from src.crewchief_sync import sees_vjoy
 from src.ui import theme as t
 
@@ -133,7 +134,7 @@ class SetupWizard:
         self.app.refresh_counts()
         self.app.refresh_setup()
         self.app.refresh_status()
-        print("Setup finished." if completed else "Setup skipped. You can run it again from Settings.")
+        print("Setup finished." if completed else "Setup skipped.")
 
     def _leave_step(self):
         if self.meter is not None:
@@ -256,14 +257,9 @@ class SetupWizard:
     # --- Steps: each fills the body and returns (title, intro) ---
 
     def _step_welcome(self):
-        self._text("You'll need three things:", bold=True, pady=(0, 10))
-        self._numbered([
-            "vJoy, a free virtual joystick driver. The assistant presses its buttons for you.",
-            "An OpenAI API key. It turns your voice into the right CrewChief command.",
-            "CrewChief, installed on this PC.",
-        ])
-        self._text("Each step checks itself, so you'll see right away if something needs fixing.", color=t.MUTED, pady=(14, 0))
-        return "Welcome to CrewChief Assistant", "Talk to CrewChief in your own words. Setup takes about two minutes."
+        self._text("You'll need:", bold=True, pady=(0, 10))
+        self._numbered(["vJoy", "An OpenAI API key", "CrewChief"])
+        return "Welcome to CrewChief Assistant", "Control CrewChief by voice."
 
     def _step_vjoy(self):
         vjoy = self.app.state.vjoy
@@ -271,11 +267,9 @@ class SetupWizard:
             self._status("todo", "Checking for vJoy…")
         elif not vjoy["ok"]:
             self._status("bad", "vJoy isn't installed, or device 1 is disabled.")
-            self._text("Install vJoy, restart your PC if the installer asks, then check again.", color=t.MUTED)
             self._buttons(("Download vJoy", lambda: webbrowser.open(VJOY_DOWNLOAD)), ("Check again", self.app.recheck_vjoy))
         elif (vjoy["buttons"] or 64) < 64:
-            self._status("todo", f"vJoy device 1 has only {vjoy['buttons']} buttons. Set it to 64 so every CrewChief "
-                                 "action gets one.")
+            self._status("todo", f"vJoy device 1 has {vjoy['buttons']} buttons. It needs 64.")
             self._numbered(["Click Open Configure vJoy.", "Select device 1 and set Buttons to 64.",
                             "Click Apply, then Check again."])
             tool = vjoy_config_tool()
@@ -284,9 +278,8 @@ class SetupWizard:
                 buttons.insert(0, ("Open Configure vJoy", lambda: os.startfile(tool)))
             self._buttons(*buttons)
         else:
-            self._status("ok", f"Found vJoy device 1 with {vjoy['buttons'] or 64} buttons.")
-            self._text("Nothing to do here.", color=t.MUTED)
-        return "vJoy driver", "The assistant presses buttons on a virtual joystick, and CrewChief reacts to those buttons."
+            self._status("ok", f"vJoy device 1, {vjoy['buttons'] or 64} buttons.")
+        return "vJoy driver", "A virtual joystick. The assistant presses its buttons."
 
     def _step_openai(self):
         row = tk.Frame(self.body, bg=t.CARD)
@@ -302,21 +295,18 @@ class SetupWizard:
         self.key_status.pack(anchor="w", fill="x")
         self._render_key_status()
         self._link("Create a key at platform.openai.com/api-keys", OPENAI_KEYS)
-        self._text("Tip: give the key only audio and chat permissions, and set a monthly budget limit in your OpenAI "
-                   "project.", color=t.MUTED, size=10)
-        return "OpenAI API key", ("Your key turns speech into text and picks the command. "
-                                  "It's stored encrypted in Windows Credential Manager.")
+        return "OpenAI API key", "Stored encrypted in Windows Credential Manager."
 
     def _render_key_status(self):
         for child in self.key_status.winfo_children():
             child.destroy()
         test = self.app.state.key_test
         if not get_api_key():
-            self._status("todo", "Paste your key, then Save and test.", parent=self.key_status)
+            self._status("todo", "No key yet.", parent=self.key_status)
         elif test is None or test[0] is None:
-            self._status("todo", "Testing your key…", parent=self.key_status)
+            self._status("todo", "Testing…", parent=self.key_status)
         elif test[0]:
-            self._status("ok", "Your key works.", parent=self.key_status)
+            self._status("ok", "Key works.", parent=self.key_status)
         else:
             self._status("bad", test[1], parent=self.key_status)
 
@@ -350,17 +340,17 @@ class SetupWizard:
         self.mic_status = tk.Frame(self.body, bg=t.CARD)
         self.mic_status.pack(anchor="w", fill="x")
         self._render_mic_status()
-        return "Microphone", "Pick the microphone you race with, then say something. The bar should move."
+        return "Microphone", "Pick your microphone and say something."
 
     def _render_mic_status(self):
         for child in self.mic_status.winfo_children():
             child.destroy()
         if self.meter is None:
-            self._status("bad", "This microphone can't be opened. Pick another one.", parent=self.mic_status)
+            self._status("bad", "Can't open this microphone.", parent=self.mic_status)
         elif self.heard:
             self._status("ok", "Microphone works.", parent=self.mic_status)
         else:
-            self._status("todo", "Say something to test the microphone.", parent=self.mic_status)
+            self._status("todo", "Say something.", parent=self.mic_status)
 
     def _open_meter(self):
         try:
@@ -402,16 +392,14 @@ class SetupWizard:
         self._buttons(("Cancel" if waiting else "Change key", settings._start_rebind))
         self.key_down = tk.Label(self.body, text="", font=t.tk_font(t.BODY, 11, "bold"), bg=t.CARD, fg=t.MUTED)
         self.key_down.pack(anchor="w", pady=(14, 0))
-        return "Push-to-talk key", ("Hold this key while you speak. Pick one that's easy to reach mid-corner. "
-                                    "Only keyboard keys work.")
+        return "Push-to-talk key", "Hold it while you speak. Keyboard keys only."
 
     def _draw_key_down(self):
         try:
             down = keyboard.is_pressed(self.app.ptt_key)
         except ValueError:
             down = False
-        self.key_down.configure(text=("Key is down. Let go when you've finished speaking." if down else
-                                      f"Press and hold {self.app.ptt_label()} to check it works."),
+        self.key_down.configure(text="Key down" if down else f"Press {self.app.ptt_label()} to test it.",
                                 fg=t.GREEN if down else t.MUTED)
 
     def _crewchief_progress(self):
@@ -468,23 +456,22 @@ class SetupWizard:
 
         if found:
             self._task(1, "Let CrewChief find vJoy",
-                       "In CrewChief, open Controllers and click Scan for controllers. This ticks off by itself.",
+                       "In CrewChief, click Scan for controllers.",
                        "Found" if seen else "Waiting for CrewChief", kind(0))
         else:
             self._task(1, "Let CrewChief find vJoy",
-                       "Open CrewChief once so it creates its settings, then click Scan for controllers.",
+                       "Open CrewChief, then click Scan for controllers.",
                        "Settings not found", kind(0), ("Choose file…", self._choose_crewchief_file))
         count = len(self.app.bound_buttons())
-        self._task(2, "Sync your commands", "One button and voice command for every CrewChief action.",
+        self._task(2, "Sync your commands", "One button per CrewChief action.",
                    f"{count} commands synced" if synced else "", kind(1),
                    (("Sync again" if synced else "Sync now"), lambda: self.app.sync_with_crewchief(path)) if seen else None,
                    primary=kind(1) == "active")
-        self._task(3, "Restart CrewChief", "Close CrewChief and open it again so it uses the new buttons.",
+        self._task(3, "Restart CrewChief", "So it loads the new buttons.",
                    "Do this now" if kind(2) == "active" else ("Done" if done[2] else ""), kind(2),
                    ("Done", self._restarted) if kind(2) == "active" else None, primary=True)
-        self._text("Binding buttons by hand instead? Skip this step and use Test on the Commands page.",
-                   color=t.MUTED, size=10, pady=(6, 0))
-        return "CrewChief", "Three quick tasks link your commands to CrewChief. They tick off as you go."
+        self._text("Binding buttons by hand? Skip this step.", color=t.MUTED, size=10, pady=(6, 0))
+        return "CrewChief", "Link your commands to CrewChief."
 
     def _choose_crewchief_file(self):
         path = filedialog.askopenfilename(title="Select CrewChief defaultSettings.json",
@@ -501,7 +488,7 @@ class SetupWizard:
         if not get_api_key():
             self._status("bad", "Add your OpenAI key first.")
             self._buttons(("Go to OpenAI key", lambda: self.go(2)))
-            return "Try it", "Almost there."
+            return "Try it", ""
         label, color, lamp = t.STATUS[self.app.state.status]
         gauge = tk.Frame(self.body, bg=t.CARD)
         gauge.pack(anchor="w", pady=(0, 14))
@@ -512,17 +499,18 @@ class SetupWizard:
 
         new = self._new_results()
         if not new:
-            self._text(f"Waiting for your first command. Hold {self.app.ptt_label()} and speak.", color=t.MUTED)
+            self._text("Waiting for a command.", color=t.MUTED)
         else:
             r = new[0]
             heard = f"“{r.heard}”" if r.heard else "Nothing heard"
             if r.outcome == "pressed":
-                self._status("ok", f"{heard} pressed button {r.button}: {r.command[:1].upper() + r.command[1:]}. You're all set.")
+                self._status("ok", f"{heard} pressed button {crewchief_number(r.button)}: "
+                                   f"{r.command[:1].upper() + r.command[1:]}")
             elif r.outcome == "error":
                 self._status("bad", r.message)
             else:
-                self._status("todo", f"{heard} didn't match a command. Try saying one from the Commands page.")
-        return "Try it", f"Hold {self.app.ptt_label()} and say a command, like “radio check” or “how's my fuel”."
+                self._status("todo", f"{heard} didn't match a command.")
+        return "Try it", f"Hold {self.app.ptt_label()} and say a command."
 
     # --- Live updates ---
 

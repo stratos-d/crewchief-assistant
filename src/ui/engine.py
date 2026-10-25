@@ -15,15 +15,15 @@ def friendly_error(error):
     if "API key not configured" in text:
         return "Add your OpenAI API key in Settings."
     if name == "AuthenticationError":
-        return "OpenAI rejected the API key. Check it in Settings."
+        return "Invalid OpenAI API key."
     if name in ("APIConnectionError", "APITimeoutError", "ConnectError", "ConnectTimeout"):
-        return "Can't reach OpenAI. Check your internet connection."
+        return "Can't reach OpenAI."
     if name == "RateLimitError":
-        return "OpenAI rate limit or quota reached. Check your OpenAI account."
+        return "OpenAI rate limit or quota reached."
     if name == "PortAudioError":
-        return "The microphone isn't available. Pick another one in Settings."
+        return "Microphone not available."
     if name == "RuntimeError" and "vJoy" in text:
-        return "vJoy isn't available. Install vJoy and enable device 1."
+        return "vJoy not available."
     return text
 
 

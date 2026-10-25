@@ -25,15 +25,18 @@ import pytest  # noqa: E402
 from src import credentials  # noqa: E402
 import src.config_manager as cm  # noqa: E402
 import src.sounds as sounds  # noqa: E402
+import src.usage as usage  # noqa: E402
 
 credentials.TARGET = "CrewChief Assistant PYTEST"
 
 
 @pytest.fixture(autouse=True)
 def isolated(monkeypatch):
-    """Fresh config file, no stored key and no beeps for every test."""
-    if os.path.exists(cm.CONFIG_PATH):
-        os.remove(cm.CONFIG_PATH)
+    """Fresh config and usage files, no stored key and no beeps for every test."""
+    for path in (cm.CONFIG_PATH, usage.USAGE_PATH):
+        if os.path.exists(path):
+            os.remove(path)
+    usage._data = None
     monkeypatch.setattr(sounds, "_play_sound", lambda path: None)
     yield
     try:
