@@ -10,7 +10,7 @@ import customtkinter as ctk
 from src.audio import get_input_devices
 from src.config_manager import (
     get_setting, set_setting, get_api_key, get_controllers, load_config, save_config,
-    get_openai_client, preload_openai, _parse_binding
+    get_openai_client, preload_openai, migrate_api_key, _parse_binding
 )
 from src.gamepad import init_vjoy, release_vjoy
 from src.ui import theme as t
@@ -20,6 +20,7 @@ from src.ui.pages.home import HomePage
 from src.ui.pages.commands import CommandsPage
 from src.ui.pages.settings import SettingsPage
 from src.ui.pages.activity import ActivityPage
+from src.ui.wizard import SetupWizard
 
 NAV = [("home", "Home", t.GLYPH_HOME), ("commands", "Commands", t.GLYPH_COMMANDS),
        ("settings", "Settings", t.GLYPH_SETTINGS), ("activity", "Activity", t.GLYPH_ACTIVITY)]
@@ -42,6 +43,7 @@ class CrewChiefGUI:
         self.events = EventQueue()
         self.engine = VoiceEngine(on_event=self.events.post)
         self.ptt_key = get_setting("ptt_key", "scroll lock")
+        self.wizard = None
 
         self._build_sidebar()
         self.content = content = ctk.CTkFrame(self.root, fg_color=t.CREAM)
@@ -58,6 +60,7 @@ class CrewChiefGUI:
         sys.stdout = LogWriter(self.events.post)
         self.root.report_callback_exception = self._on_ui_error
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        migrate_api_key()
 
         self.show("home")
         self.refresh_status()
@@ -66,6 +69,8 @@ class CrewChiefGUI:
         self.pages["home"].render_recent(self.state.recent)
         self._pump()
         threading.Thread(target=self._run_startup, daemon=True).start()
+        if not get_setting("setup_complete", False) and not get_api_key():
+            self.open_wizard()  # first launch
 
     # --- Setup ---
 
@@ -168,6 +173,7 @@ class CrewChiefGUI:
     def _on_result(self, result):
         self.state.recent.appendleft(result)
         self.pages["home"].render_recent(self.state.recent)
+        self._refresh_wizard()
 
     def _on_vjoy(self, ok, buttons):
         self.state.vjoy = {"ok": ok, "buttons": buttons}
@@ -254,6 +260,29 @@ class CrewChiefGUI:
         self.mini_button.configure(text="Stop listening" if running else "Start listening")
         self.pages["home"].render_status(label, color, lamp, detail, running)
         self.pages["settings"].render_listening(running)
+        self._refresh_wizard()
+
+    # --- Setup wizard ---
+
+    def open_wizard(self):
+        if self.wizard is None:
+            self.wizard = SetupWizard(self)
+            self.wizard.show()
+
+    def _refresh_wizard(self):
+        if self.wizard is not None:
+            self.wizard.refresh()
+
+    def recheck_vjoy(self):
+        """Look for vJoy again, e.g. after installing it or changing its button count."""
+        self.state.vjoy = None
+        self.refresh_setup()
+
+        def run():
+            release_vjoy()
+            self.events.post("vjoy", **init_vjoy())
+
+        threading.Thread(target=run, daemon=True).start()
 
     # --- Setup checklist ---
 
@@ -305,6 +334,7 @@ class CrewChiefGUI:
         else:
             checks.append(("todo", "CrewChief", "Not synced yet", "Sync", self.sync_with_crewchief))
         self.pages["home"].render_setup(checks)
+        self._refresh_wizard()
 
     def test_api_key(self):
         self.state.key_test = (None, "Testing…")

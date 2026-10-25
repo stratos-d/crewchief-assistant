@@ -19,6 +19,8 @@ class SettingsPage:
         self._confidence_job = None
         self.frame = ctk.CTkFrame(master, fg_color=t.CREAM)
         t.page_header(self.frame, "Settings", "Changes save as you make them.")
+        t.secondary_button(self.frame, "Run setup wizard", app.open_wizard, bg=t.CREAM, width=150, height=30).place(
+            relx=1.0, y=30, anchor="ne")
 
         voice = self._card("Voice")
         self._ptt_row(voice)
@@ -108,7 +110,7 @@ class SettingsPage:
     # --- OpenAI ---
 
     def _key_row(self, form):
-        self.key_note = self._label(form, 0, "API key", "Stored in your config file on this PC.")
+        self.key_note = self._label(form, 0, "API key", "Stored encrypted in Windows Credential Manager.")
         box = ctk.CTkFrame(form, fg_color=t.CARD, width=10)
         box.grid(row=0, column=1, sticky="w")
         self.key_entry = ctk.CTkEntry(box, width=280, height=32, show="•", fg_color=t.CREAM, border_color=t.NAVY,
@@ -161,7 +163,11 @@ class SettingsPage:
 
     def _on_key_save(self):
         key = self.key_entry.get().strip()
-        save_api_key(key)
+        try:
+            save_api_key(key)
+        except OSError as e:
+            self.render_key_status(f"Windows couldn't save the key: {e.strerror or e}", False)
+            return
         self.app.state.key_test = None
         self.render_key_status("Saved. Use Test to check it." if key else "Key removed.", None)
         print("API key saved." if key else "API key cleared.")

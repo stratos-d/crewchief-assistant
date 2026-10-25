@@ -117,3 +117,4 @@ class HomePage:
             tk.Label(text, text=name.upper(), font=t.tk_font(t.HEAD, 11, "bold"), fg=t.TEXT, bg=t.CARD, anchor="w").pack(anchor="w")
             tk.Label(text, text=detail, font=t.tk_font(t.BODY, 9), fg=t.MUTED, bg=t.CARD, anchor="w", justify="left",
                      wraplength=t.px(220)).pack(anchor="w")
+        t.RowButton(self.setup_box, "Run setup wizard", self.app.open_wizard).pack(anchor="w", pady=(12, 0))

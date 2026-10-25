@@ -16,9 +16,9 @@ CrewChief has its own voice recognition, but it relies on Windows Speech Recogni
 
 ### API key storage
 
-CrewChief Assistant stores your OpenAI API key locally in the app configuration file.
-The key is currently stored as plain text, so anyone with access to your user files may be able to read it.
-Recommended to use a dedicated OpenAI API key with a low usage limit.
+Your OpenAI API key is stored in **Windows Credential Manager**, encrypted with your Windows login. It is not saved in `config.json`; keys saved there by older versions are moved automatically on first launch. You can see or remove it under *Credential Manager → Windows Credentials → CrewChief Assistant*.
+
+This keeps the key out of config files, backups and other Windows accounts, but programs running under your own account can still use it. For extra safety, use a dedicated key with restricted permissions and a monthly budget limit set in your OpenAI project.
 
 ## Installation
 
@@ -44,6 +44,8 @@ By default, vJoy creates Device 1 with only **8 buttons**. If you want more butt
 4. Click **Apply**.
 
 ## Usage
+
+On first launch, a **setup wizard** walks you through vJoy, your OpenAI key, the microphone, the push-to-talk key and CrewChief, then lets you try a command. You can run it again from Home or Settings.
 
 The app has four pages in the sidebar: **Home**, **Commands**, **Settings** and **Activity**. The **Setup** checklist on Home shows what still needs doing (vJoy driver, OpenAI key, microphone, CrewChief sync), each with a button to fix it.
 
