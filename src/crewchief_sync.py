@@ -30,6 +30,44 @@ def find_vjoy_guid(devices):
     return None
 
 
+def _documents_dir():
+    """The user's Documents folder, following OneDrive or other redirection."""
+    try:
+        import ctypes
+        import uuid
+        from ctypes import wintypes
+
+        class GUID(ctypes.Structure):
+            _fields_ = [("Data1", wintypes.DWORD), ("Data2", wintypes.WORD), ("Data3", wintypes.WORD),
+                        ("Data4", ctypes.c_ubyte * 8)]
+
+        folder = uuid.UUID("FDD39AD0-238F-46AF-ADB4-6C85480369C7")  # FOLDERID_Documents
+        guid = GUID(folder.fields[0], folder.fields[1], folder.fields[2], (ctypes.c_ubyte * 8)(*folder.bytes[8:]))
+        path = ctypes.c_wchar_p()
+        if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(guid), 0, None, ctypes.byref(path)) == 0:
+            try:
+                return path.value
+            finally:
+                ctypes.windll.ole32.CoTaskMemFree(path)
+    except (AttributeError, OSError):
+        pass
+    return os.path.join(os.path.expanduser("~"), "Documents")
+
+
+def default_settings_path():
+    """Where CrewChief keeps its controller bindings."""
+    return os.path.join(_documents_dir(), "CrewChiefV4", "Profiles", "ControllerData", "defaultSettings.json")
+
+
+def sees_vjoy(crewchief_config_path):
+    """True once CrewChief's "Scan for controllers" has added the vJoy device to its settings."""
+    try:
+        with open(crewchief_config_path, "r", encoding="utf-8") as f:
+            return find_vjoy_guid(json.load(f).get("devices", [])) is not None
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def get_available_actions(button_assignments):
     """Filter button assignments to only those with availableAction: true."""
     return [ba for ba in button_assignments if ba.get("availableAction", False)]
