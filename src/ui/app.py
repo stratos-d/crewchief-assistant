@@ -351,25 +351,25 @@ class CrewChiefGUI:
 
     # --- CrewChief sync ---
 
-    def sync_with_crewchief(self):
-        """Sync bindings with CrewChief's config file."""
+    def crewchief_settings_path(self):
+        """The CrewChief settings file chosen before, or CrewChief's default location."""
+        from src.crewchief_sync import default_settings_path
+        return get_setting("crewchief_config_path", "") or default_settings_path()
+
+    def sync_with_crewchief(self, config_path=None):
+        """Sync bindings with CrewChief's config file. Asks for the file unless config_path is given."""
         from src.crewchief_sync import sync_crewchief_config
 
-        default_path = get_setting("crewchief_config_path", "")
-        if not default_path:
-            default_path = os.path.join(
-                os.path.expanduser("~"),
-                "Documents", "CrewChiefV4", "Profiles", "ControllerData", "defaultSettings.json"
+        if not config_path or not os.path.exists(config_path):
+            default_path = self.crewchief_settings_path()
+            config_path = filedialog.askopenfilename(
+                title="Select CrewChief defaultSettings.json",
+                initialdir=os.path.dirname(default_path),
+                initialfile=os.path.basename(default_path),
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
             )
-
-        config_path = filedialog.askopenfilename(
-            title="Select CrewChief defaultSettings.json",
-            initialdir=os.path.dirname(default_path),
-            initialfile=os.path.basename(default_path),
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        if not config_path:
-            return
+            if not config_path:
+                return
 
         set_setting("crewchief_config_path", config_path)
 

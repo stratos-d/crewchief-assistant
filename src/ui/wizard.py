@@ -4,9 +4,11 @@ import webbrowser
 
 import customtkinter as ctk
 import keyboard
+from tkinter import filedialog
 
 from src.audio import LevelMeter, get_input_devices
 from src.config_manager import get_setting, set_setting, get_api_key, save_api_key
+from src.crewchief_sync import sees_vjoy
 from src.ui import theme as t
 
 STEPS = [("welcome", "Welcome"), ("vjoy", "vJoy driver"), ("openai", "OpenAI key"), ("mic", "Microphone"),
@@ -14,7 +16,7 @@ STEPS = [("welcome", "Welcome"), ("vjoy", "vJoy driver"), ("openai", "OpenAI key
 VJOY_DOWNLOAD = "https://sourceforge.net/projects/vjoystick/"
 OPENAI_KEYS = "https://platform.openai.com/api-keys"
 DEFAULT_MIC = "System default"
-HEARD_LEVEL = 0.08  # peak level that counts as "we can hear you"
+HEARD_LEVEL = 0.08  # peak level that counts as the microphone working
 
 
 def vjoy_config_tool():
@@ -37,6 +39,9 @@ class SetupWizard:
         self.heard = False
         self.last_seen = None  # newest result before the Try it step opened
         self._tick_job = None
+        self._ticks = 0
+        self.crewchief_restarted = False
+        self._crewchief_seen = None
 
         self.frame = ctk.CTkFrame(app.root, fg_color=t.CREAM, corner_radius=0)
         self._build_rail()
@@ -79,7 +84,7 @@ class SetupWizard:
         for i, (_, name) in enumerate(STEPS):
             row = ctk.CTkFrame(rail, fg_color=t.NAVY, corner_radius=t.RADIUS, height=38)
             row.pack(fill="x", padx=12, pady=1)
-            mark = ctk.CTkLabel(row, text=str(i + 1), width=26, height=26, corner_radius=13, font=t.font(t.HEAD, 12, "bold"))
+            mark = tk.Canvas(row, width=t.px(26), height=t.px(26), bg=t.NAVY, highlightthickness=0)
             mark.pack(side="left", padx=(8, 10), pady=6)
             label = ctk.CTkLabel(row, text=name, font=t.font(t.HEAD, 14), height=26)
             label.pack(side="left")
@@ -185,13 +190,17 @@ class SetupWizard:
         for i, (row, mark, label) in enumerate(self.rail_items):
             key = STEPS[i][0]
             current = i == self.step
-            row.configure(fg_color=t.NAVY_2 if current else t.NAVY)
-            if self.done(key) and not current:
-                mark.configure(text="✓", font=t.font(t.BODY, 13, "bold"), fg_color=t.ORANGE, text_color=t.NAVY)
-            else:
-                mark.configure(text=str(i + 1), font=t.font(t.HEAD, 12, "bold"),
-                               fg_color=t.ORANGE if current else t.NAVY_2,
-                               text_color=t.NAVY if current else t.SIDE_MUTED)
+            bg = t.NAVY_2 if current else t.NAVY
+            row.configure(fg_color=bg)
+            ticked = self.done(key) and not current
+            fill = t.ORANGE if ticked or current else t.NAVY_2
+            mark.configure(bg=bg)
+            mark.delete("all")
+            size, pad = int(mark["width"]), t.px(1)
+            mark.create_oval(pad, pad, size - pad, size - pad, fill=fill, outline=fill)
+            mark.create_text(size / 2, size / 2, text="✓" if ticked else str(i + 1),
+                             fill=t.NAVY if ticked or current else t.SIDE_MUTED,
+                             font=t.tk_font(t.BODY if ticked else t.HEAD, 10, "bold"))
             label.configure(text_color="#ffffff" if current else t.SIDE_MUTED)
 
     def _render_footer(self):
@@ -349,9 +358,9 @@ class SetupWizard:
         if self.meter is None:
             self._status("bad", "This microphone can't be opened. Pick another one.", parent=self.mic_status)
         elif self.heard:
-            self._status("ok", "We can hear you.", parent=self.mic_status)
+            self._status("ok", "Microphone works.", parent=self.mic_status)
         else:
-            self._status("todo", "Waiting for sound… say something.", parent=self.mic_status)
+            self._status("todo", "Say something to test the microphone.", parent=self.mic_status)
 
     def _open_meter(self):
         try:
@@ -405,22 +414,88 @@ class SetupWizard:
                                       f"Press and hold {self.app.ptt_label()} to check it works."),
                                 fg=t.GREEN if down else t.MUTED)
 
-    def _step_crewchief(self):
+    def _crewchief_progress(self):
+        """(settings path, file exists, CrewChief sees vJoy, synced, synced in this session)."""
+        path = self.app.crewchief_settings_path()
+        found = os.path.exists(path)
         state = self.app.state
-        last = get_setting("crewchief_last_sync", "")
-        if state.synced_this_session:
-            self._status("todo", "Synced. Restart CrewChief so it loads the new bindings.")
-        elif last:
-            self._status("ok", f"Synced {last}.")
-        self._numbered([
-            "Start CrewChief and click Scan for controllers in its controller settings, so it sees the vJoy device.",
-            r"Click Sync with CrewChief and pick defaultSettings.json from Documents\CrewChiefV4\Profiles\ControllerData.",
-            "Restart CrewChief to load the new bindings.",
-        ])
-        self._buttons(("Sync with CrewChief", self.app.sync_with_crewchief))
-        self._text("Rather bind buttons yourself? Skip this step and use Test on the Commands page.", color=t.MUTED,
-                   size=10, pady=(14, 0))
-        return "CrewChief", "Link the assistant's buttons to CrewChief actions. Sync does every action at once."
+        synced = state.synced_this_session or bool(get_setting("crewchief_last_sync", ""))
+        return path, found, found and sees_vjoy(path), synced, state.synced_this_session
+
+    def _task(self, number, title, detail, status, kind, action=None, primary=False):
+        """One task panel. kind is done, active (the one to do now) or waiting."""
+        panel = tk.Frame(self.body, bg=t.NAVY if kind == "active" else t.LINE, padx=1, pady=1)
+        panel.pack(fill="x", pady=(0, 10))
+        inner = tk.Frame(panel, bg=t.CARD)
+        inner.pack(fill="x")
+        tk.Frame(inner, bg=t.ORANGE if kind == "active" else t.CARD, width=t.px(4)).pack(side="left", fill="y")
+        size, pad = t.px(30), t.px(2)
+        badge = tk.Canvas(inner, width=size, height=size, bg=t.CARD, highlightthickness=0)
+        if kind == "done":
+            badge.create_oval(pad, pad, size - pad, size - pad, fill=t.ORANGE, outline=t.ORANGE)
+            badge.create_text(size / 2, size / 2, text="✓", fill=t.NAVY, font=t.tk_font(t.BODY, 12, "bold"))
+        else:
+            color = t.NAVY if kind == "active" else t.FAINT
+            badge.create_oval(pad, pad, size - pad, size - pad, fill="#ffffff", outline=color, width=pad)
+            badge.create_text(size / 2, size / 2, text=str(number), fill=color, font=t.tk_font(t.HEAD, 11, "bold"))
+        badge.pack(side="left", padx=(12, 14), pady=12)
+
+        right = tk.Frame(inner, bg=t.CARD)
+        right.pack(side="right", padx=14)
+        if action:
+            make = t.primary_button if primary else t.secondary_button
+            make(right, action[0], action[1], width=110, height=30).pack(side="right", padx=(10, 0))
+        if status:
+            tk.Label(right, text=status, font=t.tk_font(t.BODY, 10, "bold"), bg=t.CARD,
+                     fg={"done": t.GREEN, "active": t.CHIP_FG}.get(kind, t.FAINT)).pack(side="right")
+
+        text = tk.Frame(inner, bg=t.CARD)
+        text.pack(side="left", fill="x", expand=True, pady=10)
+        faded = kind == "waiting"
+        tk.Label(text, text=title, font=t.tk_font(t.HEAD, 13, "bold"), fg=t.FAINT if faded else t.TEXT, bg=t.CARD,
+                 anchor="w").pack(anchor="w")
+        tk.Label(text, text=detail, font=t.tk_font(t.BODY, 10), fg=t.FAINT if faded else t.MUTED, bg=t.CARD,
+                 anchor="w", justify="left", wraplength=t.px(320)).pack(anchor="w")
+
+    def _step_crewchief(self):
+        path, found, seen, synced, just_synced = self._crewchief_progress()
+        self._crewchief_seen = seen
+        done = [seen, synced, synced and (not just_synced or self.crewchief_restarted)]
+        active = next((i for i, d in enumerate(done) if not d), None)
+
+        def kind(i):
+            return "done" if done[i] else ("active" if i == active else "waiting")
+
+        if found:
+            self._task(1, "Let CrewChief find vJoy",
+                       "In CrewChief, open Controllers and click Scan for controllers. This ticks off by itself.",
+                       "Found" if seen else "Waiting for CrewChief", kind(0))
+        else:
+            self._task(1, "Let CrewChief find vJoy",
+                       "Open CrewChief once so it creates its settings, then click Scan for controllers.",
+                       "Settings not found", kind(0), ("Choose file…", self._choose_crewchief_file))
+        count = len(self.app.bound_buttons())
+        self._task(2, "Sync your commands", "One button and voice command for every CrewChief action.",
+                   f"{count} commands synced" if synced else "", kind(1),
+                   (("Sync again" if synced else "Sync now"), lambda: self.app.sync_with_crewchief(path)) if seen else None,
+                   primary=kind(1) == "active")
+        self._task(3, "Restart CrewChief", "Close CrewChief and open it again so it uses the new buttons.",
+                   "Do this now" if kind(2) == "active" else ("Done" if done[2] else ""), kind(2),
+                   ("Done", self._restarted) if kind(2) == "active" else None, primary=True)
+        self._text("Binding buttons by hand instead? Skip this step and use Test on the Commands page.",
+                   color=t.MUTED, size=10, pady=(6, 0))
+        return "CrewChief", "Three quick tasks link your commands to CrewChief. They tick off as you go."
+
+    def _choose_crewchief_file(self):
+        path = filedialog.askopenfilename(title="Select CrewChief defaultSettings.json",
+                                          filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if path:
+            set_setting("crewchief_config_path", path)
+            self.render()
+
+    def _restarted(self):
+        self.crewchief_restarted = True
+        self.render()
 
     def _step_try(self):
         if not get_api_key():
@@ -457,4 +532,8 @@ class SetupWizard:
             self._draw_meter()
         if key == "ptt" and hasattr(self, "key_down") and self.key_down.winfo_exists():
             self._draw_key_down()
+        self._ticks += 1
+        if key == "crewchief" and self._ticks % 12 == 0:  # about once a second, watch for CrewChief's scan
+            if self._crewchief_progress()[2] != self._crewchief_seen:
+                self.render()
         self._tick_job = self.frame.after(80, self._tick)
