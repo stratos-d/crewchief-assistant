@@ -112,8 +112,7 @@ def sync_crewchief_config(crewchief_config_path, existing_controllers):
     if not vjoy_guid:
         return {
             "success": False,
-            "message": "No vJoy device found in CrewChief config. "
-                       "Make sure vJoy is installed and CrewChief has detected it.",
+            "message": "CrewChief hasn't found vJoy. Click Scan for controllers in CrewChief.",
             "bindings": [],
             "action_count": 0,
             "truncated": False,
@@ -174,10 +173,8 @@ def sync_crewchief_config(crewchief_config_path, existing_controllers):
 
     return {
         "success": True,
-        "message": f"Synced {len(actions_to_assign)} actions to vJoy device. "
-                   f"Backup saved to: {os.path.basename(backup_path)}"
-                   + (f"\nWarning: {len(available) - total_slots} actions were truncated (max {total_slots})."
-                      if truncated else ""),
+        "message": f"Synced {len(actions_to_assign)} actions. Backup: {os.path.basename(backup_path)}"
+                   + (f"\n{len(available) - total_slots} actions left out (max {total_slots})." if truncated else ""),
         "bindings": [app_controller],
         "action_count": len(actions_to_assign),
         "truncated": truncated,

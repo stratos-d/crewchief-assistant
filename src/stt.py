@@ -1,3 +1,4 @@
+from src import usage
 from src.config_manager import get_openai_client, get_all_commands, get_setting
 
 def transcribe_audio(virtual_audio_file):
@@ -15,12 +16,14 @@ def transcribe_audio(virtual_audio_file):
     if commands:
         prompt = ", ".join(commands)
 
+    model = get_setting("models.stt", "gpt-4o-mini-transcribe")
     transcription = client.audio.transcriptions.create(
-        model=get_setting("models.stt", "gpt-4o-mini-transcribe"),
+        model=model,
         file=virtual_audio_file,
         language="en",
         prompt=prompt
     )
+    usage.record(model, getattr(transcription, "usage", None), command=True)
 
     text = transcription.text
     print(f"Transcription complete: '{text}'")

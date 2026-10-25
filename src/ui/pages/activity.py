@@ -16,7 +16,7 @@ class ActivityPage:
         self._repeats = 0
         self._last_start = None
         self.frame = ctk.CTkFrame(master, fg_color=t.CREAM)
-        t.page_header(self.frame, "Activity", "Everything the assistant did this session.")
+        t.page_header(self.frame, "Activity", "This session.")
 
         bar = ctk.CTkFrame(self.frame, fg_color=t.CREAM, height=32)
         bar.pack(fill="x", pady=(0, 12))

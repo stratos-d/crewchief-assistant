@@ -18,7 +18,7 @@ class SettingsPage:
         self._rebind_hook = None
         self._confidence_job = None
         self.frame = ctk.CTkFrame(master, fg_color=t.CREAM)
-        t.page_header(self.frame, "Settings", "Changes save as you make them.")
+        t.page_header(self.frame, "Settings", "Changes save automatically.")
         t.secondary_button(self.frame, "Run setup wizard", app.open_wizard, bg=t.CREAM, width=150, height=30).place(
             relx=1.0, y=30, anchor="ne")
 
@@ -31,9 +31,9 @@ class SettingsPage:
         openai = self._card("OpenAI", pady=(14, 0))
         self._key_row(openai)
         self._model_row(openai, "Speech-to-text model", "models.stt", STT_MODELS, "gpt-4o-mini-transcribe",
-                        "Turns your voice into text. The mini model is the fastest.")
+                        "Mini is the fastest.")
         self._model_row(openai, "Command model", "models.router", ROUTER_MODELS, "gpt-4o-mini",
-                        "Picks which command you meant.")
+                        "Matches what you said to a command.")
 
     # --- Layout helpers ---
 
@@ -70,7 +70,7 @@ class SettingsPage:
     # --- Voice ---
 
     def _ptt_row(self, form):
-        self.ptt_note = self._label(form, 0, "Push-to-talk key", "Any keyboard key. Esc cancels.")
+        self.ptt_note = self._label(form, 0, "Push-to-talk key", "Keyboard keys only.")
         box = ctk.CTkFrame(form, fg_color=t.CARD, width=10)
         box.grid(row=0, column=1, sticky="w")
         chip = ctk.CTkFrame(box, fg_color=t.CREAM, border_width=1, border_color=t.NAVY, corner_radius=t.RADIUS)
@@ -82,13 +82,13 @@ class SettingsPage:
         self.rebind_button.pack(side="left", padx=(8, 0))
 
     def _mic_row(self, form):
-        self._label(form, 1, "Microphone", "Used while listening. Changing it restarts listening.")
+        self._label(form, 1, "Microphone")
         names = list(dict.fromkeys(d["name"] for d in get_input_devices()))
         current = get_setting("audio.input_device", "") or DEFAULT_MIC
         self._menu(form, [DEFAULT_MIC] + names, current, self._on_mic_changed).grid(row=1, column=1, sticky="w")
 
     def _confidence_row(self, form):
-        self._label(form, 2, "Minimum confidence", "Lower presses more guesses. Higher ignores unclear requests.")
+        self._label(form, 2, "Minimum confidence", "Commands matched below this are ignored.")
         box = ctk.CTkFrame(form, fg_color=t.CARD, width=10)
         box.grid(row=2, column=1, sticky="w")
         value = get_setting("confidence_threshold", 50)
@@ -102,7 +102,7 @@ class SettingsPage:
         self.confidence_value.pack(side="left", padx=(10, 0))
 
     def _beeps_row(self, form):
-        self._label(form, 3, "Beeps", "Push-to-talk start and stop, and a double beep when no button was pressed.")
+        self._label(form, 3, "Beeps", "On push-to-talk, and when a command fails.")
         self.beeps = ctk.BooleanVar(value=get_setting("audio.ptt_sound_enabled", True))
         ctk.CTkSwitch(form, text="", variable=self.beeps, command=self._on_beeps, progress_color=t.ORANGE,
                       button_color=t.NAVY, button_hover_color=t.NAVY_2, fg_color=t.LINE).grid(row=3, column=1, sticky="w")
@@ -137,7 +137,7 @@ class SettingsPage:
     def render_listening(self, running):
         if self._rebind_hook is None:
             self.rebind_button.configure(state="disabled" if running else "normal")
-            self.ptt_note.configure(text="Stop listening to change it." if running else "Any keyboard key. Esc cancels.")
+            self.ptt_note.configure(text="Stop listening to change it." if running else "Keyboard keys only.")
 
     def render_key_status(self, message, ok):
         color = t.FAINT if ok is None else (t.GREEN if ok else t.RED)
@@ -155,11 +155,11 @@ class SettingsPage:
         if self._confidence_job:
             self.frame.after_cancel(self._confidence_job)
         self._confidence_job = self.frame.after(400, lambda: (set_setting("confidence_threshold", value),
-                                                              print(f"Confidence threshold set to {value}%.")))
+                                                              print(f"Minimum confidence: {value}%")))
 
     def _on_beeps(self):
         set_setting("audio.ptt_sound_enabled", self.beeps.get())
-        print("Audio feedback enabled." if self.beeps.get() else "Audio feedback disabled.")
+        print("Beeps on." if self.beeps.get() else "Beeps off.")
 
     def _on_key_save(self):
         key = self.key_entry.get().strip()
@@ -169,7 +169,7 @@ class SettingsPage:
             self.render_key_status(f"Windows couldn't save the key: {e.strerror or e}", False)
             return
         self.app.state.key_test = None
-        self.render_key_status("Saved. Use Test to check it." if key else "Key removed.", None)
+        self.render_key_status("Saved." if key else "Key removed.", None)
         print("API key saved." if key else "API key cleared.")
         self.app.refresh_setup()
 
@@ -201,7 +201,7 @@ class SettingsPage:
         if new_key and new_key != "esc":
             self.app.ptt_key = new_key
             set_setting("ptt_key", new_key)
-            print(f"Trigger key: {new_key.upper()}")
+            print(f"Push-to-talk key: {new_key.upper()}")
 
         self.key_chip.configure(text=self.app.ptt_label(), text_color=t.TEXT)
         self.rebind_button.configure(text="Change")

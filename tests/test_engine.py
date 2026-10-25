@@ -141,6 +141,6 @@ def test_outcomes_and_not_understood_beep(engine, monkeypatch, intent, confidenc
 def test_friendly_errors():
     AuthenticationError = type("AuthenticationError", (Exception,), {})
     PortAudioError = type("PortAudioError", (Exception,), {})
-    assert "rejected" in engine_mod.friendly_error(AuthenticationError("401"))
-    assert "microphone" in engine_mod.friendly_error(PortAudioError("-9996"))
+    assert engine_mod.friendly_error(AuthenticationError("401")) == "Invalid OpenAI API key."
+    assert engine_mod.friendly_error(PortAudioError("-9996")) == "Microphone not available."
     assert "Settings" in engine_mod.friendly_error(ValueError("OpenAI API key not configured. Set it"))

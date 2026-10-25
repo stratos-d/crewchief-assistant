@@ -23,10 +23,12 @@ from src.ui.pages.home import HomePage
 from src.ui.pages.commands import CommandsPage
 from src.ui.pages.settings import SettingsPage
 from src.ui.pages.activity import ActivityPage
+from src.ui.pages.usage import UsagePage
 from src.ui.wizard import SetupWizard
 
 NAV = [("home", "Home", t.GLYPH_HOME), ("commands", "Commands", t.GLYPH_COMMANDS),
-       ("settings", "Settings", t.GLYPH_SETTINGS), ("activity", "Activity", t.GLYPH_ACTIVITY)]
+       ("settings", "Settings", t.GLYPH_SETTINGS), ("activity", "Activity", t.GLYPH_ACTIVITY),
+       ("usage", "Usage", t.GLYPH_USAGE)]
 VJOY_URL = "https://sourceforge.net/projects/vjoystick/"
 
 
@@ -57,6 +59,7 @@ class CrewChiefGUI:
             "commands": CommandsPage(content, self),
             "settings": SettingsPage(content, self),
             "activity": ActivityPage(content, self),
+            "usage": UsagePage(content, self),
         }
         self.current_page = None
 
@@ -186,6 +189,8 @@ class CrewChiefGUI:
     def _on_result(self, result):
         self.state.recent.appendleft(result)
         self.pages["home"].render_recent(self.state.recent)
+        if self.current_page == "usage":
+            self.pages["usage"].render()
         self._refresh_wizard()
 
     def _on_vjoy(self, ok, buttons):
@@ -194,7 +199,7 @@ class CrewChiefGUI:
 
     def _on_update(self, tag):
         self.update_button.configure(text=f"Update to {tag}")
-        self.update_button.pack(side="bottom", fill="x", padx=12)
+        self.update_button.pack(side="bottom", fill="x", padx=12, pady=(0, 10))
         print(f"Update available: {tag}")
 
     def _on_rebind(self, key):
@@ -247,26 +252,17 @@ class CrewChiefGUI:
         return get_setting("audio.input_device", "") or "System default microphone"
 
     def status_detail(self):
-        state, key = self.state.status, self.ptt_label()
-        return {
-            "off": f"Press Start, then hold {key} and speak.",
-            "starting": "Opening the microphone…",
-            "ready": f"Hold {key} to talk  ·  {self.mic_label()}",
-            "recording": f"Release {key} to send",
-            "processing": "Working out what you said…",
-        }.get(state, self.state.status_message)
+        state = self.state.status
+        if state == "ready":
+            return f"Hold {self.ptt_label()} to talk  ·  {self.mic_label()}"
+        return self.state.status_message if state == "error" else ""
 
     def mini_detail(self):
         """Short hint for the sidebar card."""
-        state, key = self.state.status, self.ptt_label()
-        message = self.state.status_message
-        return {
-            "off": "Press Start to listen",
-            "starting": "Opening the microphone…",
-            "ready": f"Hold {key} to talk",
-            "recording": f"Release {key} to send",
-            "processing": "Working…",
-        }.get(state, message if len(message) < 48 else message[:45] + "…")
+        state, message = self.state.status, self.state.status_message
+        if state == "ready":
+            return f"Hold {self.ptt_label()} to talk"
+        return (message if len(message) < 48 else message[:45] + "…") if state == "error" else ""
 
     def refresh_status(self):
         label, color, lamp = t.STATUS[self.state.status]
@@ -274,7 +270,12 @@ class CrewChiefGUI:
         detail = self.status_detail()
         self.mini_dot.configure(text_color=lamp)
         self.mini_label.configure(text=label.capitalize())
-        self.mini_hint.configure(text=self.mini_detail())
+        hint = self.mini_detail()
+        self.mini_hint.configure(text=hint)
+        if hint:
+            self.mini_hint.pack(anchor="w", padx=(30, 12), before=self.mini_button)
+        else:
+            self.mini_hint.pack_forget()
         self.mini_button.configure(text="Stop listening" if running else "Start listening")
         self.pages["home"].render_status(label, color, lamp, detail, running)
         self.pages["settings"].render_listening(running)
@@ -325,15 +326,14 @@ class CrewChiefGUI:
         else:
             buttons, needed = vjoy["buttons"], max(self.bound_buttons(), default=0)
             if buttons and needed > buttons:
-                checks.append(("bad", "vJoy driver", f"Only {buttons} buttons enabled, commands use up to {needed}. "
-                                                     "Raise it in Configure vJoy.", None, None))
+                checks.append(("bad", "vJoy driver", f"Only {buttons} buttons. Set 64 in Configure vJoy.", None, None))
             else:
                 checks.append(("ok", "vJoy driver", f"Device 1, {buttons or 64} buttons", None, None))
 
         if not get_api_key():
             checks.append(("bad", "OpenAI key", "Not set", "Add key", lambda: self.show("settings")))
         elif self.state.key_test is None:
-            checks.append(("todo", "OpenAI key", "Saved, not tested yet", "Test", self.test_api_key))
+            checks.append(("todo", "OpenAI key", "Not tested", "Test", self.test_api_key))
         else:
             ok, message = self.state.key_test
             checks.append(("ok" if ok else "bad", "OpenAI key", message, "Test", self.test_api_key))
@@ -346,11 +346,11 @@ class CrewChiefGUI:
 
         last_sync = get_setting("crewchief_last_sync", "")
         if self.state.synced_this_session:
-            checks.append(("todo", "CrewChief", "Synced. Restart CrewChief to load the bindings.", "Sync", self.sync_with_crewchief))
+            checks.append(("todo", "CrewChief", "Synced. Restart CrewChief.", "Sync", self.sync_with_crewchief))
         elif last_sync:
             checks.append(("ok", "CrewChief", f"Synced {last_sync}", "Sync", self.sync_with_crewchief))
         else:
-            checks.append(("todo", "CrewChief", "Not synced yet", "Sync", self.sync_with_crewchief))
+            checks.append(("todo", "CrewChief", "Not synced", "Sync", self.sync_with_crewchief))
         self.pages["home"].render_setup(checks)
         self._refresh_wizard()
 
@@ -393,9 +393,7 @@ class CrewChiefGUI:
 
         if not messagebox.askyesno(
             "Sync with CrewChief",
-            "This will overwrite CrewChief's button assignments for actions marked as available.\n\n"
-            "Voice commands on buttons the sync doesn't use will be cleared.\n\n"
-            "A backup of the original file will be created.\n\nContinue?"
+            "Overwrite CrewChief's button bindings and clear unused commands? A backup is saved first."
         ):
             return
 
@@ -417,7 +415,7 @@ class CrewChiefGUI:
         self.refresh_counts()
         self.refresh_setup()
         print(f"CrewChief sync complete: {result['message']}")
-        messagebox.showinfo("Sync complete", result["message"] + "\n\nRestart CrewChief to load the new bindings.")
+        messagebox.showinfo("Sync complete", result["message"] + "\n\nRestart CrewChief.")
 
     # --- Shutdown ---
 

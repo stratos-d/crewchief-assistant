@@ -1,4 +1,5 @@
 import json
+from src import usage
 from src.config_manager import get_openai_client, get_all_commands, get_setting
 
 UNKNOWN_INTENT = "unknown"
@@ -50,8 +51,9 @@ def get_intent(transcribed_text):
 
     # API errors propagate so the caller can tell the driver what went wrong
     client = get_openai_client()
+    model = get_setting("models.router", "gpt-4o-mini")
     response = client.chat.completions.create(
-        model=get_setting("models.router", "gpt-4o-mini"),
+        model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": transcribed_text}
@@ -59,6 +61,7 @@ def get_intent(transcribed_text):
         response_format={"type": "json_schema", "json_schema": _intent_schema(valid_intents)},
         temperature=0.0
     )
+    usage.record(model, getattr(response, "usage", None))
 
     try:
         result = json.loads(response.choices[0].message.content)

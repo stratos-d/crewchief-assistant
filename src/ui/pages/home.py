@@ -3,6 +3,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from src.config_manager import get_setting
+from src.constants import crewchief_number
 from src.ui import theme as t
 
 
@@ -16,7 +17,7 @@ class HomePage:
     def __init__(self, master, app):
         self.app = app
         self.frame = ctk.CTkFrame(master, fg_color=t.CREAM)
-        t.page_header(self.frame, "Home", "Ready for the race. Hold your push-to-talk key and just say it.")
+        t.page_header(self.frame, "Home", "")
 
         outer, card = t.card(self.frame)
         outer.pack(fill="x")
@@ -58,14 +59,17 @@ class HomePage:
         t.draw_gauge(self.gauge, lamp)
         self.state_label.configure(text=label, text_color=color)
         self.detail_label.configure(text=detail)
+        if detail:
+            self.detail_label.pack(anchor="w")
+        else:
+            self.detail_label.pack_forget()
         self.button.configure(text="Stop listening" if running else "Start listening")
 
     def render_recent(self, results):
         for child in self.recent_box.winfo_children():
             child.destroy()
         if not results:
-            tk.Label(self.recent_box, text=f"No commands yet. Start listening, hold {self.app.ptt_label()} and say "
-                                           "something like “how's my fuel”.",
+            tk.Label(self.recent_box, text="No commands yet.",
                      font=t.tk_font(t.BODY, 10), fg=t.MUTED, bg=t.CARD, justify="left", wraplength=t.px(360),
                      anchor="w").pack(anchor="w", pady=4)
             return
@@ -75,7 +79,7 @@ class HomePage:
             row = tk.Frame(self.recent_box, bg=t.CARD)
             row.pack(fill="x", pady=4)
             if r.outcome == "pressed":
-                t.roundel(row, str(r.button)).pack(side="left", padx=(0, 10), anchor="n")
+                t.roundel(row, str(crewchief_number(r.button))).pack(side="left", padx=(0, 10), anchor="n")
             else:
                 tk.Label(row, text="!" if r.outcome == "error" else "?", font=t.tk_font(t.HEAD, 15, "bold"),
                          fg=t.RED, bg=t.CARD, width=2).pack(side="left", padx=(0, 10), anchor="n")
@@ -83,7 +87,7 @@ class HomePage:
 
             body = tk.Frame(row, bg=t.CARD)
             body.pack(side="left", fill="x", expand=True)
-            heard = f"“{r.heard}”" if r.heard else ("Something went wrong" if r.outcome == "error" else "Nothing heard")
+            heard = f"“{r.heard}”" if r.heard else ("Error" if r.outcome == "error" else "Nothing heard")
             tk.Label(body, text=heard, font=t.tk_font(t.BODY, 10), fg=t.TEXT, bg=t.CARD, anchor="w", justify="left",
                      wraplength=t.px(340)).pack(anchor="w")
             line = tk.Frame(body, bg=t.CARD)
@@ -92,10 +96,10 @@ class HomePage:
             chip, kind, meta = {
                 "pressed": (pretty(r.command), "ok", ("exact match" if r.exact else f"{r.confidence}%") + f" · {seconds}"),
                 "unknown": ("Not understood", "bad", seconds),
-                "low_confidence": (f"Unsure: {pretty(r.command)}", "bad", f"{r.confidence}% is below your {threshold}% minimum"),
+                "low_confidence": (f"Unsure: {pretty(r.command)}", "bad", f"{r.confidence}%, minimum {threshold}%"),
                 "no_binding": (f"No button for {pretty(r.command)}", "bad", seconds),
-                "no_speech": ("Didn't catch that", "bad", seconds),
-                "error": ("Error", "bad", r.message),
+                "no_speech": ("No speech", "bad", seconds),
+                "error": ("Failed", "bad", r.message),
             }[r.outcome]
             t.chip(line, chip, kind).pack(side="left")
             tk.Label(line, text=meta, font=t.tk_font(t.BODY, 9), fg=t.FAINT, bg=t.CARD, justify="left",
