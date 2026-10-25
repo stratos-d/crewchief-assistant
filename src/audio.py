@@ -12,7 +12,6 @@ from src.sounds import play_ptt_on, play_ptt_off
 SAMPLE_RATE = 16000
 BLOCK_FRAMES = SAMPLE_RATE // 50  # 20 ms per callback
 POLL_SECONDS = 0.01
-SILENCE_LEVEL = 0.03  # a clip whose peak stays below this is silence and isn't sent
 
 
 def get_input_devices():
@@ -83,7 +82,6 @@ class Clip:
     """One push-to-talk recording."""
     wav: io.BytesIO
     seconds: float
-    peak: float  # loudest sample, 0..1
 
 
 def peak_level(pcm):
@@ -151,4 +149,4 @@ def record_command(mic, ptt_key, stop_event=None, on_start=None, on_stop=None):
 
     if not pcm:
         return None
-    return Clip(wav=encode_wav(pcm), seconds=len(pcm) / 2 / SAMPLE_RATE, peak=peak_level(pcm))
+    return Clip(wav=encode_wav(pcm), seconds=len(pcm) / 2 / SAMPLE_RATE)

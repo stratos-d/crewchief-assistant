@@ -1,6 +1,6 @@
 import threading
 import time
-from src.audio import Microphone, SILENCE_LEVEL, record_command
+from src.audio import Microphone, record_command
 from src.stt import transcribe_audio
 from src.router import get_intent
 from src.gamepad import trigger_action
@@ -112,9 +112,6 @@ class VoiceEngine:
         )
 
         if not clip or stop_event.is_set():
-            return
-        if clip.peak < SILENCE_LEVEL:
-            self._report(CommandResult(heard="", outcome="no_speech"))
             return
 
         text = transcribe_audio(clip.wav)

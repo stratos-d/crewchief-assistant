@@ -6,7 +6,7 @@ import pytest
 import src.ui.engine as engine_mod
 from src.audio import Clip
 
-SPOKEN = Clip(wav=None, seconds=1.5, peak=0.4)
+SPOKEN = Clip(wav=None, seconds=1.5)
 
 
 class FakeMic:
@@ -148,11 +148,8 @@ def test_friendly_errors():
     assert "Settings" in engine_mod.friendly_error(ValueError("OpenAI API key not configured. Set it"))
 
 
-@pytest.mark.parametrize("clip, transcript", [
-    (Clip(wav=None, seconds=3.0, peak=0.01), None),  # silence: not sent at all
-    (Clip(wav=None, seconds=4.0, peak=0.05), "volume up, volume down, get car status, " * 20),  # hint list echoed back
-])
-def test_silent_clips_are_not_understood(engine, monkeypatch, clip, transcript):
+def test_echoed_hint_list_is_not_understood(engine, monkeypatch):
+    clip, transcript = Clip(wav=None, seconds=4.0), "volume up, volume down, get car status, " * 20
     eng, seen = engine
     first, sent = {"done": False}, []
 
@@ -171,4 +168,4 @@ def test_silent_clips_are_not_understood(engine, monkeypatch, clip, transcript):
     assert wait_for(lambda: seen["result"])
     assert seen["result"][0].outcome == "no_speech"
     assert seen["beeps"] == 1
-    assert len(sent) == (0 if transcript is None else 1)
+    assert len(sent) == 1

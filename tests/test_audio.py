@@ -79,7 +79,6 @@ def test_record_command_follows_the_key(monkeypatch):
     seconds = wav_seconds(clip.wav)
     assert 0.85 <= seconds <= 1.2
     assert clip.seconds == pytest.approx(seconds)
-    assert 0.0 <= clip.peak <= 1.0
 
 
 @needs_mic
