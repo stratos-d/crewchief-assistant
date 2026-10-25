@@ -132,7 +132,7 @@ class CrewChiefGUI:
         self.mini_hint = ctk.CTkLabel(mini, text="", font=t.font(t.BODY, 12), text_color=t.SIDE_MUTED, height=18,
                                       wraplength=170, justify="left")
         self.mini_hint.pack(anchor="w", padx=(30, 12))
-        self.mini_button = t.primary_button(mini, "Start listening", self.toggle_listening, height=30)
+        self.mini_button = t.primary_button(mini, "Enable", self.toggle_listening, height=30)
         self.mini_button.pack(fill="x", padx=12, pady=(10, 12))
 
     def _limit_content_width(self, event):
@@ -276,7 +276,7 @@ class CrewChiefGUI:
             self.mini_hint.pack(anchor="w", padx=(30, 12), before=self.mini_button)
         else:
             self.mini_hint.pack_forget()
-        self.mini_button.configure(text="Stop listening" if running else "Start listening")
+        self.mini_button.configure(text="Disable" if running else "Enable")
         self.pages["home"].render_status(label, color, lamp, detail, running)
         self.pages["settings"].render_listening(running)
         self._refresh_wizard()

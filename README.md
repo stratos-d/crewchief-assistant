@@ -78,7 +78,7 @@ The sync function automatically maps all available CrewChief keybinds to vJoy bu
 
 ### Voice Commands
 
-Once set up, click **Start listening**, hold your Push-to-Talk key (default: Scroll Lock), and speak naturally:
+Once set up, click **Enable**, hold your Push-to-Talk key (default: Scroll Lock), and speak naturally:
 
 - "How's my tire wear?"
 - "What's my fuel situation?"

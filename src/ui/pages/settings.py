@@ -137,7 +137,7 @@ class SettingsPage:
     def render_listening(self, running):
         if self._rebind_hook is None:
             self.rebind_button.configure(state="disabled" if running else "normal")
-            self.ptt_note.configure(text="Stop listening to change it." if running else "Keyboard keys only.")
+            self.ptt_note.configure(text="Disable to change it." if running else "Keyboard keys only.")
 
     def render_key_status(self, message, ok):
         color = t.FAINT if ok is None else (t.GREEN if ok else t.RED)
