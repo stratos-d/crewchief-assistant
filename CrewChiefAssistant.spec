@@ -6,33 +6,30 @@ block_cipher = None
 # Collect all data/binaries for problematic packages
 keyboard_datas, keyboard_binaries, keyboard_hiddenimports = collect_all('keyboard')
 pyvjoy_datas, pyvjoy_binaries, pyvjoy_hiddenimports = collect_all('pyvjoy')
+ctk_datas, ctk_binaries, ctk_hiddenimports = collect_all('customtkinter')  # themes, fonts and icons
 src_hiddenimports = collect_submodules('src')
 
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=keyboard_binaries + pyvjoy_binaries,
+    binaries=keyboard_binaries + pyvjoy_binaries + ctk_binaries,
     datas=[
         ('resources', 'resources'),
-    ] + keyboard_datas + pyvjoy_datas,
+    ] + keyboard_datas + pyvjoy_datas + ctk_datas,
     hiddenimports=src_hiddenimports + [
         'keyboard',
         'keyboard._winkeyboard',
         'keyboard._keyboard_event',
         'pyvjoy',
         'sounddevice',
-        'pygame',
-        'pygame.mixer',
-        'scipy',
-        'scipy.io',
-        'scipy.io.wavfile',
-        'numpy',
         'openai',
         'httpx',
         'dotenv',
         'python-dotenv',
         'tkinter',
-    ] + keyboard_hiddenimports + pyvjoy_hiddenimports,
+        'customtkinter',
+        'darkdetect',
+    ] + keyboard_hiddenimports + pyvjoy_hiddenimports + ctk_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -40,6 +37,8 @@ a = Analysis(
         'matplotlib', 'notebook', 'jupyter', 'IPython',
         'pandas', 'PIL', 'Pillow',
         'lib2to3', 'test',
+        # Audio uses raw byte streams; sounddevice only needs numpy for its array APIs
+        'numpy',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

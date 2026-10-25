@@ -1,8 +1,11 @@
 import os
 import sys
+import copy
 import json
+import threading
+import time
+from datetime import datetime
 from dotenv import load_dotenv
-from openai import OpenAI
 from src.constants import MAX_BUTTONS, DEFAULT_BINDINGS_COUNT
 
 # Load .env file if exists
@@ -21,6 +24,9 @@ def _get_config_dir():
 CONFIG_PATH = os.path.join(_get_config_dir(), "config.json")
 _client = None
 
+# The voice engine thread reads settings while the UI thread saves them
+_config_lock = threading.RLock()
+
 VJOY_BUTTONS = [str(i) for i in range(1, MAX_BUTTONS + 1)]
 
 DEFAULTS = {
@@ -29,11 +35,10 @@ DEFAULTS = {
         "openai_api_key": "",
         "confidence_threshold": 50,
         "models": {
-            "stt": "whisper-1",
+            "stt": "gpt-4o-mini-transcribe",
             "router": "gpt-4o-mini"
         },
         "audio": {
-            "sample_rate": 44100,
             "ptt_sound_enabled": True
         }
     },
@@ -51,19 +56,6 @@ DEFAULTS = {
     ]
 }
 
-DEFAULT_THEME = {
-    "bg_color": "#021526",
-    "card_bg": "#03346E",
-    "accent_color": "#6EACDA",
-    "text_main": "#e8edf3",
-    "text_dim": "#8aa0b8",
-    "ready_green": "#6EACDA",
-    "stop_red": "#e05555",
-    "proc_orange": "#E2E2B6",
-    "btn_bg": "#042d5a",
-    "term_bg": "#010e1c"
-}
-
 def _deep_merge(base, overlay):
     """Deep merge overlay into base, preserving nested structures."""
     result = base.copy()
@@ -75,22 +67,50 @@ def _deep_merge(base, overlay):
     return result
 
 def load_config():
-    config = _deep_merge(DEFAULTS, {})
-    if not os.path.exists(CONFIG_PATH):
-        save_config(config)
-    else:
-        with open(CONFIG_PATH, "r") as f:
-            loaded = json.load(f)
+    with _config_lock:
+        config = copy.deepcopy(DEFAULTS)
+        loaded = _read_config_file()
+        if loaded is None:
+            save_config(config)
+        else:
             config = _deep_merge(config, loaded)
-    return config
+        return config
+
+def _read_config_file():
+    """Read the saved config. Returns None if it is missing; an unreadable file is moved aside."""
+    if not os.path.exists(CONFIG_PATH):
+        return None
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            loaded = json.load(f)
+        if isinstance(loaded, dict):
+            return loaded
+    except ValueError:  # Covers JSONDecodeError and UnicodeDecodeError
+        pass
+    broken_path = CONFIG_PATH + f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    os.replace(CONFIG_PATH, broken_path)
+    print(f"Config file was unreadable. Moved it to {broken_path} and restored defaults.")
+    return None
 
 def save_config(config):
+    """Write the config atomically, so a crash mid-write can't leave a truncated file."""
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(config, f, indent=4)
+    tmp_path = CONFIG_PATH + ".tmp"
+    with _config_lock:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4)
+        for attempt in range(5):
+            try:
+                os.replace(tmp_path, CONFIG_PATH)
+                return
+            except PermissionError:
+                # On Windows another process (e.g. antivirus) can briefly hold the file open
+                if attempt == 4:
+                    raise
+                time.sleep(0.05)
 
 def get_setting(key_path, default=None):
-    """Get a setting by dot-path like 'models.stt' or 'audio.sample_rate'."""
+    """Get a setting by dot-path like 'models.stt' or 'audio.input_device'."""
     config = load_config()
     keys = key_path.split(".")
     value = config.get("settings", {})
@@ -195,10 +215,6 @@ def get_available_buttons():
     """Get list of available vJoy buttons."""
     return VJOY_BUTTONS
 
-def get_theme():
-    config = load_config()
-    return config.get("theme", DEFAULT_THEME)
-
 def get_api_key():
     key = get_setting("openai_api_key", "")
     if key:
@@ -210,11 +226,31 @@ def save_api_key(api_key):
     _client = None  # Invalidate cached client so new key takes effect
     set_setting("openai_api_key", api_key)
 
+def preload_openai():
+    """Import the OpenAI SDK ahead of the first command. It takes over a second, so it isn't imported at startup."""
+    import openai  # noqa: F401
+
 def get_openai_client():
     global _client
     api_key = get_api_key()
     if not api_key:
         raise ValueError("OpenAI API key not configured. Set it in the GUI or as OPENAI_API_KEY environment variable.")
     if _client is None:
-        _client = OpenAI(api_key=api_key)
+        import httpx
+        from openai import OpenAI, DefaultHttpxClient
+        # Keep idle connections for 60 s instead of httpx's 5 s, so nearby commands skip the TLS handshake
+        _client = OpenAI(
+            api_key=api_key,
+            http_client=DefaultHttpxClient(limits=httpx.Limits(max_keepalive_connections=5, keepalive_expiry=60))
+        )
     return _client
+
+def warm_up_connection():
+    """Open the HTTPS connection in the background while the driver is still talking."""
+    def warm():
+        try:
+            get_openai_client().models.retrieve(get_setting("models.router", "gpt-4o-mini"))
+        except Exception:
+            pass  # Only an optimization; the real request reports any problem
+
+    threading.Thread(target=warm, daemon=True).start()

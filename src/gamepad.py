@@ -21,14 +21,25 @@ def _get_device():
     return _device
 
 
+def _button_count():
+    """Buttons enabled on the vJoy device (vJoy defaults to 8; the app can use up to 64)."""
+    try:
+        return int(pyvjoy._sdk._vj.GetVJDButtonNumber(VJOY_DEVICE_ID))
+    except Exception:
+        return None
+
+
 def init_vjoy():
-    """Initialize the vJoy device."""
+    """Initialize the vJoy device. Returns {"ok": bool, "buttons": int or None} for the setup checklist."""
     try:
         dev = _get_device()
         dev.reset()
-        print(f"vJoy device {VJOY_DEVICE_ID} initialized ({MAX_BUTTONS} buttons).")
+        buttons = _button_count()
+        print(f"vJoy device {VJOY_DEVICE_ID} initialized ({buttons or MAX_BUTTONS} buttons).")
+        return {"ok": True, "buttons": buttons}
     except RuntimeError as e:
         print(f"ERROR: {e}")
+        return {"ok": False, "buttons": None}
 
 
 def release_vjoy():
@@ -44,13 +55,15 @@ def release_vjoy():
 
 
 def trigger_action(command_name):
-    """Trigger button for a command via the vJoy device."""
+    """Trigger button for a command via the vJoy device. Returns the button number pressed, or None."""
     result = find_command_controller(command_name)
     if not result:
-        return
+        print(f"No enabled button is bound to '{command_name}'.")
+        return None
 
     _controller_index, button_key = result
     _press_button(int(button_key))
+    return int(button_key)
 
 
 def trigger_button(controller_index, button_key):
