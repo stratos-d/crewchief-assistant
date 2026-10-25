@@ -10,10 +10,11 @@ import sys
 
 def main_gui():
     """Launch the graphical user interface."""
-    import tkinter as tk
+    import customtkinter as ctk
     from src.ui import CrewChiefGUI
 
-    root = tk.Tk()
+    ctk.set_appearance_mode("light")
+    root = ctk.CTk()
     CrewChiefGUI(root)
     root.mainloop()
 
@@ -21,13 +22,14 @@ def main_gui():
 def main_cli():
     """Launch command-line interface mode."""
     import time
-    from src.audio import record_command
+    from src.audio import Microphone, record_command
     from src.stt import transcribe_audio
     from src.router import get_intent
     from src.gamepad import trigger_action
-    from src.config_manager import get_setting
+    from src.config_manager import get_setting, warm_up_connection
 
     ptt_key = get_setting("ptt_key", "scroll lock")
+    mic = Microphone()
 
     print("=======================================")
     print(" CrewChief Assistant Started! ")
@@ -37,7 +39,7 @@ def main_cli():
 
     while True:
         try:
-            audio_buffer = record_command(ptt_key)
+            audio_buffer = record_command(mic, ptt_key, on_start=warm_up_connection)
 
             if not audio_buffer:
                 continue

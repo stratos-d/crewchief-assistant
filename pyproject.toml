@@ -11,11 +11,10 @@ requires-python = ">=3.13,<3.15"
 dependencies = [
     "openai (>=2.31.0,<3.0.0)",
     "sounddevice (>=0.5.5,<0.6.0)",
-    "scipy (>=1.17.1,<2.0.0)",
     "keyboard (>=0.13.5,<0.14.0)",
     "pyvjoy (>=1.0.0,<2.0.0)",
     "python-dotenv (>=1.2.2,<2.0.0)",
-    "pygame (>=2.6.0,<3.0.0)"
+    "customtkinter (>=6.0.0,<7.0.0)"
 ]
 
 [project.optional-dependencies]

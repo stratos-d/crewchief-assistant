@@ -10,6 +10,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Optional tag to publish as a GitHub Release, for example v0.5.1
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -48,7 +53,10 @@ jobs:
           if-no-files-found: error
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          # A new tag is created on this commit, not on the default branch head
+          target_commitish: ${{ github.sha }}
           files: dist/CrewChiefAssistant.exe

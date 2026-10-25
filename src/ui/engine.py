@@ -1,19 +1,39 @@
 import threading
-from src.audio import record_command
+import time
+from src.audio import Microphone, record_command
 from src.stt import transcribe_audio
 from src.router import get_intent
 from src.gamepad import trigger_action
-from src.config_manager import get_setting
+from src.config_manager import get_setting, warm_up_connection
+from src.ui.state import CommandResult
+
+
+def friendly_error(error):
+    """Turn library exceptions into a sentence a driver can act on."""
+    name, text = type(error).__name__, str(error)
+    if "API key not configured" in text:
+        return "Add your OpenAI API key in Settings."
+    if name == "AuthenticationError":
+        return "OpenAI rejected the API key. Check it in Settings."
+    if name in ("APIConnectionError", "APITimeoutError", "ConnectError", "ConnectTimeout"):
+        return "Can't reach OpenAI. Check your internet connection."
+    if name == "RateLimitError":
+        return "OpenAI rate limit or quota reached. Check your OpenAI account."
+    if name == "PortAudioError":
+        return "The microphone isn't available. Pick another one in Settings."
+    if name == "RuntimeError" and "vJoy" in text:
+        return "vJoy isn't available. Install vJoy and enable device 1."
+    return text
 
 
 class VoiceEngine:
-    """Handles the voice command processing loop."""
+    """Handles the voice command processing loop. Reports progress through on_event(kind, **data)."""
 
-    def __init__(self, on_status_change):
-        self.on_status_change = on_status_change
+    def __init__(self, on_event):
+        self.on_event = on_event
         self.stop_event = threading.Event()
         self.stop_event.set()  # Start in stopped state
-        self._thread = None
+        self._released_at = None
 
     @property
     def is_running(self):
@@ -24,10 +44,10 @@ class VoiceEngine:
         if self.is_running:
             return
 
-        self.ptt_key = ptt_key
-        self.stop_event.clear()
-        self._thread = threading.Thread(target=self._run_loop, daemon=True)
-        self._thread.start()
+        # Each run gets its own event, so a previous run still waiting on an API call
+        # stays stopped instead of being revived when this run clears its event
+        self.stop_event = threading.Event()
+        threading.Thread(target=self._run_loop, args=(ptt_key, self.stop_event), daemon=True).start()
         print("Assistant active.")
 
     def stop(self):
@@ -35,30 +55,85 @@ class VoiceEngine:
         self.stop_event.set()
         print("Assistant stopped.")
 
-    def _run_loop(self):
+    def _status(self, stop_event, state, message=""):
+        if not stop_event.is_set():
+            self.on_event("status", state=state, message=message)
+
+    def _run_loop(self, ptt_key, stop_event):
         """Main processing loop."""
-        while not self.stop_event.is_set():
-            audio_buffer = record_command(
-                self.ptt_key,
-                self.stop_event,
-                on_start=lambda: self.on_status_change("LISTENING", "stop_red"),
-                on_stop=lambda: self.on_status_change("PROCESSING", "proc_orange")
-            )
+        mic = None
+        last_error = None
+        while not stop_event.is_set():
+            try:
+                if mic is None:
+                    mic = Microphone()
+                    self._status(stop_event, "ready")
+                self._process_command(mic, ptt_key, stop_event)
+                last_error = None
+            except Exception as e:
+                message = friendly_error(e)
+                if message != last_error:  # a persistent failure is reported once, not every second
+                    print(f"ERROR: {e}")
+                    if mic is not None:
+                        self.on_event("result", result=CommandResult(heard="", outcome="error", message=message))
+                last_error = message
+                self._status(stop_event, "error", message)
+                # Back off so a persistent failure (bad PTT key, missing mic) doesn't spin
+                stop_event.wait(1)
+                if mic is None:
+                    continue
 
-            if not audio_buffer or self.stop_event.is_set():
-                continue
+            self._status(stop_event, "ready")
 
-            text = transcribe_audio(audio_buffer)
-            if text:
-                print(f"STT: {text}")
-                result = get_intent(text)
-                intent = result.get("intent", "unknown")
-                conf = result.get("confidence", 0)
-                print(f"ROUTER: {intent.upper()} ({conf}%)")
+        if mic is not None:
+            mic.close()
 
-                threshold = get_setting("confidence_threshold", 50)
-                if intent != "unknown" and conf >= threshold:
-                    trigger_action(intent)
+    def _on_ptt_pressed(self, stop_event):
+        # Connect to OpenAI while the driver is still talking, so the upload starts on a warm connection
+        warm_up_connection()
+        self._status(stop_event, "recording")
 
-            if not self.stop_event.is_set():
-                self.on_status_change("READY", "ready_green")
+    def _on_ptt_released(self, stop_event):
+        self._released_at = time.perf_counter()
+        self._status(stop_event, "processing")
+
+    def _process_command(self, mic, ptt_key, stop_event):
+        """Record one push-to-talk command and trigger the matching action."""
+        audio_buffer = record_command(
+            mic,
+            ptt_key,
+            stop_event,
+            on_start=lambda: self._on_ptt_pressed(stop_event),
+            on_stop=lambda: self._on_ptt_released(stop_event)
+        )
+
+        if not audio_buffer or stop_event.is_set():
+            return
+
+        text = transcribe_audio(audio_buffer)
+        if stop_event.is_set():
+            return
+        if not text or not text.strip():
+            self._report(CommandResult(heard="", outcome="no_speech"))
+            return
+
+        print(f"STT: {text}")
+        result = get_intent(text)
+        intent = result.get("intent", "unknown")
+        conf = result.get("confidence", 0)
+        print(f"ROUTER: {intent.upper()} ({conf}%)")
+
+        threshold = get_setting("confidence_threshold", 50)
+        outcome = CommandResult(heard=text.strip(), outcome="unknown", command=intent, confidence=conf,
+                                exact=result.get("exact", False))
+        if intent != "unknown" and conf < threshold:
+            outcome.outcome = "low_confidence"
+        elif intent != "unknown" and not stop_event.is_set():
+            outcome.button = trigger_action(intent)
+            outcome.outcome = "pressed" if outcome.button else "no_binding"
+        self._report(outcome)
+
+    def _report(self, result):
+        if self._released_at is not None:
+            result.seconds = time.perf_counter() - self._released_at
+        self.on_event("result", result=result)

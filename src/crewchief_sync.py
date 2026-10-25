@@ -116,11 +116,10 @@ def sync_crewchief_config(crewchief_config_path, existing_controllers):
         command_name = action_to_command(assignment["action"])
         existing_bindings[btn["id"]] = {"command": command_name, "enabled": True}
 
-    # Ensure unsynced buttons retain proper format
-    for key in list(existing_bindings.keys()):
-        val = existing_bindings[key]
-        if isinstance(val, str):
-            existing_bindings[key] = {"command": val, "enabled": bool(val)}
+    # Clear the remaining buttons: no synced CrewChief action is mapped to them anymore,
+    # so commands left over from earlier syncs or manual setup would do nothing
+    for btn in BUTTON_SCHEMA_VJOY[len(actions_to_assign):]:
+        existing_bindings[btn["id"]] = {"command": "", "enabled": False}
 
     app_controller["bindings"] = existing_bindings
 
