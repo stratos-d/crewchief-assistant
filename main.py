@@ -26,8 +26,9 @@ def main_cli():
     from src.stt import transcribe_audio
     from src.router import get_intent
     from src.gamepad import trigger_action
-    from src.config_manager import get_setting, warm_up_connection
+    from src.config_manager import get_setting, warm_up_connection, migrate_api_key
 
+    migrate_api_key()
     ptt_key = get_setting("ptt_key", "scroll lock")
     mic = Microphone()
 

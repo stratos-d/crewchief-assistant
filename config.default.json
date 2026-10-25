@@ -1,7 +1,6 @@
 {
     "settings": {
         "ptt_key": "scroll lock",
-        "openai_api_key": "",
         "confidence_threshold": 50,
         "models": {
             "stt": "whisper-1",

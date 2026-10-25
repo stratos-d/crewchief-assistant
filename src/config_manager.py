@@ -6,6 +6,7 @@ import threading
 import time
 from datetime import datetime
 from dotenv import load_dotenv
+from src import credentials
 from src.constants import MAX_BUTTONS, DEFAULT_BINDINGS_COUNT
 
 # Load .env file if exists
@@ -32,7 +33,6 @@ VJOY_BUTTONS = [str(i) for i in range(1, MAX_BUTTONS + 1)]
 DEFAULTS = {
     "settings": {
         "ptt_key": "scroll lock",
-        "openai_api_key": "",
         "confidence_threshold": 50,
         "models": {
             "stt": "gpt-4o-mini-transcribe",
@@ -216,7 +216,7 @@ def get_available_buttons():
     return VJOY_BUTTONS
 
 def get_api_key():
-    key = get_setting("openai_api_key", "")
+    key = credentials.read_api_key() or get_setting("openai_api_key", "")
     if key:
         return key
     return os.environ.get("OPENAI_API_KEY", "")
@@ -224,7 +224,33 @@ def get_api_key():
 def save_api_key(api_key):
     global _client
     _client = None  # Invalidate cached client so new key takes effect
-    set_setting("openai_api_key", api_key)
+    if not credentials.available:
+        set_setting("openai_api_key", api_key)
+        return
+    if api_key:
+        credentials.write_api_key(api_key)
+    else:
+        credentials.delete_api_key()
+    _remove_setting("openai_api_key")
+
+def _remove_setting(key):
+    with _config_lock:
+        config = load_config()
+        if config["settings"].pop(key, None) is not None:
+            save_config(config)
+
+def migrate_api_key():
+    """Move a key that older versions saved in config.json into Windows Credential Manager."""
+    key = get_setting("openai_api_key", "")
+    if not key or not credentials.available:
+        return
+    try:
+        credentials.write_api_key(key)
+    except OSError as e:
+        print(f"Couldn't move the API key to Windows Credential Manager: {e}")
+        return
+    _remove_setting("openai_api_key")
+    print("Moved the OpenAI API key from config.json to Windows Credential Manager.")
 
 def preload_openai():
     """Import the OpenAI SDK ahead of the first command. It takes over a second, so it isn't imported at startup."""

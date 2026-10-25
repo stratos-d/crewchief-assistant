@@ -1,5 +1,6 @@
 import sounddevice as sd
 import keyboard
+import array
 import collections
 import threading
 import wave
@@ -72,6 +73,23 @@ class Microphone:
         with self._lock:
             chunks, self._recording = self._recording, None
         return b"".join(chunks or [])
+
+    def close(self):
+        self._stream.close()
+
+
+class LevelMeter:
+    """Input stream that only measures loudness, for the setup wizard's microphone check."""
+
+    def __init__(self):
+        self.level = 0.0  # peak of the latest block, 0..1
+        self._stream = sd.RawInputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16", blocksize=BLOCK_FRAMES,
+                                         device=get_device_id(), callback=self._on_audio)
+        self._stream.start()
+
+    def _on_audio(self, indata, frames, time_info, status):
+        samples = array.array("h", bytes(indata))
+        self.level = max(map(abs, samples), default=0) / 32768
 
     def close(self):
         self._stream.close()
