@@ -295,7 +295,7 @@ class SetupWizard:
         self.key_status.pack(anchor="w", fill="x")
         self._render_key_status()
         self._link("Create a key at platform.openai.com/api-keys", OPENAI_KEYS)
-        return "OpenAI API key", "Stored encrypted in Windows Credential Manager."
+        return "OpenAI API key", "Saved in config.json."
 
     def _render_key_status(self):
         for child in self.key_status.winfo_children():

@@ -1,6 +1,6 @@
 [project]
 name = "crewchief-assistant"
-version = "0.10.1"  # Release builds take their version from the git tag (see .github/workflows)
+version = "0.10.2"  # Release builds take their version from the git tag (see .github/workflows)
 description = "A voice-controlled virtual joystick assistant for sim racing. Uses OpenAI Whisper and GPT to transcribe speech and map natural language commands to vJoy virtual device inputs."
 authors = [
     {name = "Julius"}

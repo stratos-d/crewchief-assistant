@@ -16,9 +16,9 @@ CrewChief has its own voice recognition, but it relies on Windows Speech Recogni
 
 ### API key storage
 
-Your OpenAI API key is stored in **Windows Credential Manager**, encrypted with your Windows login. It is not saved in `config.json`; keys saved there by older versions are moved automatically on first launch. You can see or remove it under *Credential Manager → Windows Credentials → CrewChief Assistant*.
+Your OpenAI API key is saved in plain text in `config.json` (see [Config](#config)), so anyone who can read your files can use it. Use a dedicated key with restricted permissions and a monthly budget limit set in your OpenAI project.
 
-This keeps the key out of config files, backups and other Windows accounts, but programs running under your own account can still use it. For extra safety, use a dedicated key with restricted permissions and a monthly budget limit set in your OpenAI project.
+Versions 0.7.0 to 0.10.1 kept the key in Windows Credential Manager. After updating, paste it again in **Settings**; you can remove the old entry under *Credential Manager → Windows Credentials → CrewChief Assistant*.
 
 ## Installation
 

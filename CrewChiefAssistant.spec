@@ -1,7 +1,43 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import re
+
 from PyInstaller.utils.hooks import collect_all, collect_submodules
+from PyInstaller.utils.win32 import versioninfo as vi
 
 block_cipher = None
+
+
+def app_version():
+    """(major, minor, patch, 0) from the release tag stamped into src/version.py, else from pyproject.toml."""
+    for name, pattern in (('src/version.py', r'^VERSION = "v?(\d+)\.(\d+)\.(\d+)"'),
+                          ('pyproject.toml', r'^version = "(\d+)\.(\d+)\.(\d+)"')):
+        with open(os.path.join(SPECPATH, name), encoding='utf-8') as f:
+            match = re.search(pattern, f.read(), re.M)
+        if match:
+            return tuple(int(n) for n in match.groups()) + (0,)
+    return (0, 0, 0, 0)
+
+
+# Windows file properties. Exes without them score worse with antivirus machine-learning models.
+version = app_version()
+version_text = '.'.join(map(str, version[:3]))
+version_info = vi.VSVersionInfo(
+    ffi=vi.FixedFileInfo(filevers=version, prodvers=version),
+    kids=[
+        vi.StringFileInfo([vi.StringTable('040904B0', [
+            vi.StringStruct('CompanyName', 'stratos-d'),
+            vi.StringStruct('FileDescription', 'CrewChief Assistant'),
+            vi.StringStruct('FileVersion', version_text),
+            vi.StringStruct('InternalName', 'CrewChiefAssistant'),
+            vi.StringStruct('LegalCopyright', 'Copyright (c) 2025 Julius'),
+            vi.StringStruct('OriginalFilename', 'CrewChiefAssistant.exe'),
+            vi.StringStruct('ProductName', 'CrewChief Assistant'),
+            vi.StringStruct('ProductVersion', version_text),
+        ])]),
+        vi.VarFileInfo([vi.VarStruct('Translation', [1033, 1200])]),
+    ],
+)
 
 # Collect all data/binaries for problematic packages
 keyboard_datas, keyboard_binaries, keyboard_hiddenimports = collect_all('keyboard')
@@ -68,4 +104,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='resources/app.ico',
+    version=version_info,
 )

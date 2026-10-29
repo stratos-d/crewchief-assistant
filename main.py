@@ -26,9 +26,8 @@ def main_cli():
     from src.stt import transcribe_audio
     from src.router import get_intent
     from src.gamepad import trigger_action
-    from src.config_manager import get_setting, warm_up_connection, migrate_api_key
+    from src.config_manager import get_setting
 
-    migrate_api_key()
     ptt_key = get_setting("ptt_key", "scroll lock")
     mic = Microphone()
 
@@ -40,13 +39,13 @@ def main_cli():
 
     while True:
         try:
-            audio_buffer = record_command(mic, ptt_key, on_start=warm_up_connection)
+            clip = record_command(mic, ptt_key)
 
-            if not audio_buffer:
+            if not clip:
                 continue
 
             t0 = time.perf_counter()
-            transcribed_text = transcribe_audio(audio_buffer)
+            transcribed_text = transcribe_audio(clip.wav)
             t1 = time.perf_counter()
 
             if not transcribed_text:
