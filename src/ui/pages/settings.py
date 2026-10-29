@@ -110,7 +110,7 @@ class SettingsPage:
     # --- OpenAI ---
 
     def _key_row(self, form):
-        self.key_note = self._label(form, 0, "API key", "Stored encrypted in Windows Credential Manager.")
+        self.key_note = self._label(form, 0, "API key", "Saved in config.json.")
         box = ctk.CTkFrame(form, fg_color=t.CARD, width=10)
         box.grid(row=0, column=1, sticky="w")
         self.key_entry = ctk.CTkEntry(box, width=280, height=32, show="•", fg_color=t.CREAM, border_color=t.NAVY,

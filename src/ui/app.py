@@ -11,7 +11,7 @@ import customtkinter as ctk
 from src.audio import get_input_devices
 from src.config_manager import (
     get_setting, set_setting, get_api_key, get_controllers, load_config, save_config,
-    get_openai_client, preload_openai, migrate_api_key, _parse_binding
+    get_openai_client, preload_openai, _parse_binding
 )
 from src.gamepad import init_vjoy, release_vjoy
 from src.updates import RELEASES_PAGE, newer_release
@@ -66,7 +66,6 @@ class CrewChiefGUI:
         sys.stdout = LogWriter(self.events.post)
         self.root.report_callback_exception = self._on_ui_error
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
-        migrate_api_key()
 
         self.show("home")
         self.refresh_status()

@@ -57,3 +57,17 @@ def test_concurrent_reads_never_see_a_half_written_file():
 
 def test_new_configs_have_no_api_key_field():
     assert "openai_api_key" not in cm.DEFAULTS["settings"]
+
+
+def test_api_key_is_saved_in_config():
+    cm.save_api_key("sk-new-key")
+    with open(cm.CONFIG_PATH, encoding="utf-8") as f:
+        assert json.load(f)["settings"]["openai_api_key"] == "sk-new-key"
+    assert cm.get_api_key() == "sk-new-key"
+    cm.save_api_key("")
+    assert cm.get_api_key() == ""
+
+
+def test_environment_variable_fallback(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-from-env")
+    assert cm.get_api_key() == "sk-from-env"
